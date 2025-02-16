@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { FiUser, FiBook, FiBell, FiSettings, FiLogOut, FiMenu, FiHome } from "react-icons/fi";
+import "@fontsource/poppins";
 
 export default function UserDashboard() {
   const [activeTab, setActiveTab] = useState("Profile");
@@ -23,7 +24,7 @@ export default function UserDashboard() {
 
   return (
     <div className="flex h-screen font-poppins bg-gray-100">
-      <aside className={`bg-gray-900 text-white transition-all ${isSidebarOpen ? "w-64 p-5" : "w-20 p-3"}`}>
+      <aside className={`bg-gradient-to-b from-sky-700 to-blue-950 text-white transition-all ${isSidebarOpen ? "w-64 p-5" : "w-20 p-3"}`}>
         <div className="flex items-center justify-between">
           {isSidebarOpen && <img src="/images/logo2.png" alt="Logo" className="h-20 w-auto" />}
           <button className="text-white p-2" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
@@ -48,7 +49,7 @@ export default function UserDashboard() {
         </ul>
       </aside>
 
-      <main className="text-black flex-1 p-6 bg-gray-100">
+      <main className="font-poppins text-black flex-1 p-6 bg-gray-100">
         <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-md">
           <h2 className="text-xl font-bold">{activeTab}</h2>
           <div className="flex items-center gap-5">
@@ -103,7 +104,7 @@ function SidebarItem({ icon: Icon, label, activeTab, setActiveTab, isSidebarOpen
   return (
     <li
       className={`flex items-center gap-4 p-3 rounded-lg transition ${
-        activeTab === label ? "bg-gray-700" : "hover:bg-gray-800"
+        activeTab === label ? "bg-sky-900" : "hover:bg-sky-800"
       } ${isSidebarOpen ? "" : "justify-center"}`}
       onClick={() => setActiveTab(label)}
     >

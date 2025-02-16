@@ -26,7 +26,7 @@ export default function AdminDashboard() {
   return (
     <div className="flex h-screen font-poppins">
       {/* Sidebar */}
-      <aside className={`bg-gray-900 text-white transition-all ${isSidebarOpen ? "w-64 p-5" : "w-20 p-3"}`}>
+      <aside className={`bg-gradient-to-b from-sky-700 to-blue-950 transition-all ${isSidebarOpen ? "w-64 p-5" : "w-20 p-3"}`}>
         <div className="flex items-center justify-between">
           {isSidebarOpen && <h1 className="text-lg font-bold">HED Admin</h1>}
           <button className="text-white p-2" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
@@ -85,6 +85,8 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
+      
+      
 
         <div className="mt-6">
           {activeTab === "Dashboard" && <p>Dashboard Overview</p>}
@@ -102,7 +104,7 @@ export default function AdminDashboard() {
 function SidebarItem({ icon: Icon, label, activeTab, setActiveTab, isSidebarOpen }) {
   return (
     <li
-      className={`flex items-center gap-4 p-3 rounded-lg transition ${activeTab === label ? "bg-gray-700" : "hover:bg-gray-800"} ${
+      className={`flex items-center gap-4 p-3 rounded-lg transition ${activeTab === label ? "bg-sky-900" : "hover:bg-sky-800"} ${
         isSidebarOpen ? "" : "justify-center"
       }`}
       onClick={() => setActiveTab(label)}
