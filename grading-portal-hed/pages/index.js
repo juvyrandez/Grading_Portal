@@ -2,13 +2,24 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/router";
+import { FiUser } from "react-icons/fi";
 import ScrollToTop from "../components/ScrollToTop";
-import "@fontsource/poppins"; // Default weight (400)
-
+import "@fontsource/poppins";
 
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
-  
+  const [user, setUser] = useState(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
+
   return (
     <div>
       {/* Header */}
@@ -31,16 +42,40 @@ export default function Home() {
             <a href="#contact" className="hover:underline">CONTACT US</a>
           </nav>
 
-          {/* Login/Signup Buttons (Visible in Desktop) */}
-<div className="hidden md:flex">
-  <Link href="/login_form" className="hover:underline">
-    Log In
-  </Link>
-  <span className="px-2">|</span>
-  <Link href="/signup_form" className="hover:underline">
-    Sign Up
-  </Link>
-</div>
+          {/* Login/Profile Section */}
+          <div className="hidden md:flex items-center relative">
+            {user ? (
+              // Show Profile Dropdown if logged in
+              <div className="relative">
+                <button className="flex items-center gap-3" onClick={() => setDropdownOpen(!dropdownOpen)}>
+                  <span className="font-semibold">{user.username}</span>
+                  <img src="/images/naz.jpg" alt="User" className="w-10 h-10 rounded-full border" />
+                </button>
+
+                {dropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-40 bg-white shadow-md rounded-lg p-2">
+                    <button
+                      onClick={() => router.push(user.user_type === "admin" ? "/admin_dashboard" : "/user_dashboard")}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-200 rounded-md flex items-center gap-2"
+                    >
+                      <FiUser /> Profile
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              // Show Login/Signup if not logged in
+              <>
+                <Link href="/login_form" className="hover:underline">
+                  Log In
+                </Link>
+                <span className="px-2">|</span>
+                <Link href="/signup_form" className="hover:underline">
+                  Sign Up
+                </Link>
+              </>
+            )}
+          </div>
 
           {/* Mobile Menu Button */}
           <button
@@ -51,21 +86,36 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Mobile Navbar (Visible when menuOpen is true) */}
+        {/* Mobile Navbar */}
         {menuOpen && (
           <nav className="font-poppins md:hidden bg-white shadow-md p-4 text-center">
             <a href="#home" className="block py-2 hover:underline">HOME</a>
             <a href="#about" className="block py-2 hover:underline">ABOUT US</a>
             <a href="#services" className="block py-2 hover:underline">SERVICES</a>
             <a href="#contact" className="block py-2 hover:underline">CONTACT US</a>
+
             <div className="mt-4">
-              <a href="/login" className="block py-2 hover:underline">Log In</a>
-              <a href="/signup" className="block py-2 hover:underline">Sign Up</a>
+              {user ? (
+                <button
+                  onClick={() => router.push(user.user_type === "admin" ? "/admin_dashboard" : "/user_dashboard")}
+                  className="w-full py-2 hover:underline"
+                >
+                  Profile
+                </button>
+              ) : (
+                <>
+                  <Link href="/login_form" className="block py-2 hover:underline">
+                    Log In
+                  </Link>
+                  <Link href="/signup_form" className="block py-2 hover:underline">
+                    Sign Up
+                  </Link>
+                </>
+              )}
             </div>
           </nav>
         )}
       </header>
-
 
 
       {/* Hero Section */}

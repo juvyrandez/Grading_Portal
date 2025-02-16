@@ -6,20 +6,29 @@ export default async function handler(req, res) {
     const { username, password } = req.body;
 
     try {
-      const [user] = await pool.query("SELECT * FROM users WHERE username = ?", [username]);
+      const [users] = await pool.query("SELECT * FROM users WHERE username = ?", [username]);
 
-      if (user.length === 0) {
+      if (users.length === 0) {
         return res.status(401).json({ message: "Invalid username or password" });
       }
 
-      const validPassword = await bcrypt.compare(password, user[0].password);
+      const user = users[0]; // Get the first user from the query result
+      const validPassword = await bcrypt.compare(password, user.password);
 
       if (!validPassword) {
         return res.status(401).json({ message: "Invalid username or password" });
       }
 
-      res.status(200).json({ message: "Login successful", user: user[0] });
+      res.status(200).json({
+        message: "Login successful",
+        user: {
+          id: user.id,
+          username: user.username,
+          user_type: user.user_type, // Ensure correct column name
+        },
+      });
     } catch (error) {
+      console.error("Database error:", error);
       res.status(500).json({ message: "Database error", error });
     }
   } else {
