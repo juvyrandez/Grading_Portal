@@ -85,7 +85,7 @@ export default function Home() {
             ☰
           </button>
         </div>
-
+                                                                                                                         
         {/* Mobile Navbar */}
         {menuOpen && (
           <nav className="font-poppins md:hidden bg-white shadow-md p-4 text-center">
