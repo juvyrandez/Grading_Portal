@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { FiUsers, FiBook, FiClipboard, FiSettings, FiLogOut, FiMenu, FiBell, FiUser } from "react-icons/fi";
+import Swal from "sweetalert2";
 import { FaLaptopCode, FaBalanceScale, FaBusinessTime, FaChalkboardTeacher } from "react-icons/fa";
 
 export default function AdminDashboard() {
@@ -20,10 +21,30 @@ export default function AdminDashboard() {
   }, [router]);
 
   const handleLogout = () => {
-    localStorage.removeItem("user");
-    router.push("/login_form");
+    Swal.fire({
+      title: "Are you sure?",
+      text: "You will be logged out!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Yes, logout!",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        localStorage.removeItem("user");
+        Swal.fire({
+          icon: "success",
+          title: "Logged out!",
+          text: "You've been successfully logged out.",
+          showConfirmButton: false,
+          timer: 2000,
+        });
+  
+        router.push("/login_form");
+      }
+    });
   };
-
+  
   return (
     <div className="flex min-h-screen h-[100vh] font-poppins bg-gray-100 overflow-hidden">
       {/* Sidebar */}
@@ -191,32 +212,193 @@ function Dashboard() {
 
 // STUDENTS
 function Students() {
-  const tempData = [
-    { name: "Alyza Nunag", age: 20, email: "alyza@email.com", course: "BSIT", year: "3rd Year", status: "Active" },
-    { name: "Benedict Abanto", age: 21, email: "benedict@email.com", course: "BSCS", year: "2nd Year", status: "Active" },
-    { name: "Michaela Abecia", age: 19, email: "michaela@email.com", course: "BSIT", year: "1st Year", status: "Inactive" },
-    { name: "Joan Minoza", age: 22, email: "joan@email.com", course: "BSIT", year: "4th Year", status: "Active" },
-    { name: "Juvy Randez", age: 20, email: "juvy@email.com", course: "BSCS", year: "3rd Year", status: "Active" },
-    { name: "Karl Domingo", age: 21, email: "karl@email.com", course: "BSIT", year: "2nd Year", status: "Inactive" },
-    { name: "Anne Feliciano", age: 20, email: "anne@email.com", course: "BSCS", year: "1st Year", status: "Active" },
-    { name: "David Enriquez", age: 23, email: "david@email.com", course: "BSIT", year: "4th Year", status: "Active" },
-    { name: "Sophia Cruz", age: 19, email: "sophia@email.com", course: "BSIT", year: "1st Year", status: "Inactive" },
-    { name: "Marco Reyes", age: 22, email: "marco@email.com", course: "BSCS", year: "3rd Year", status: "Active" },
-    { name: "Ella Martinez", age: 20, email: "ella@email.com", course: "BSIT", year: "2nd Year", status: "Active" },
-    { name: "Chris Velasco", age: 21, email: "chris@email.com", course: "BSCS", year: "3rd Year", status: "Inactive" },
-    { name: "Rina Salvador", age: 19, email: "rina@email.com", course: "BSIT", year: "1st Year", status: "Active" },
-    { name: "Jason Dela Cruz", age: 22, email: "jason@email.com", course: "BSCS", year: "4th Year", status: "Active" },
-  ];
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+const [editFormData, setEditFormData] = useState({});
+  const [students, setStudents] = useState([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [error, setError] = useState("");
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  
+  const [formData, setFormData] = useState({
+    fullname: "",
+    email: "",
+    username: "",
+    password: "",
+    course: "",
+    year_level: "",
+    gender: "",
+    birthdate: "",
+    contact_number: "",
+    address: "",
+  });
 
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
-  const totalPages = Math.ceil(tempData.length / itemsPerPage);
+  const handleView = (student) => {
+    setSelectedStudent(student);
+    setIsViewModalOpen(true);
+  };
 
-  const paginatedData = tempData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const handleEdit = (student) => {
+    setEditFormData(student);
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditChange = (e) => {
+    setEditFormData({ ...editFormData, [e.target.name]: e.target.value });
+  };
+  
+
+  // Handle Update
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+  
+    try {
+      const res = await fetch("/api/updateStudent", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editFormData),
+      });
+  
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to update student");
+  
+      Swal.fire({
+        icon: "success",
+        title: "Updated!",
+        text: "Student information has been updated.",
+        showConfirmButton: false,
+        timer: 2000,
+      });
+  
+      setIsEditModalOpen(false);
+      fetchStudents();
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: error.message || "Failed to update student.",
+      });
+      setError(error.message);
+    }
+  };
+  
+
+  // Handle Delete
+  const handleDelete = async (id) => {
+    Swal.fire({
+      title: "Are you sure?",
+      text: "This action cannot be undone!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Yes, delete it!",
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          const res = await fetch(`/api/deleteStudent?id=${id}`, {
+            method: "DELETE",
+          });
+  
+          if (!res.ok) throw new Error("Failed to delete student");
+  
+          Swal.fire({
+            icon: "success",
+            title: "Deleted!",
+            text: "The student has been removed.",
+            showConfirmButton: false,
+            timer: 2000,
+          });
+  
+          fetchStudents();
+        } catch (error) {
+          Swal.fire({
+            icon: "error",
+            title: "Oops...",
+            text: "Failed to delete student.",
+          });
+          console.error("Error deleting student:", error);
+        }
+      } else {
+        Swal.fire({
+          icon: "info",
+          title: "Cancelled",
+          text: "The student was not deleted.",
+          showConfirmButton: false,
+          timer: 1500,
+        });
+      }
+    });
+  };
+  
+  
+  
+
+  useEffect(() => {
+    fetchStudents();
+  }, []);
+
+  const fetchStudents = async () => {
+    try {
+      const res = await fetch("/api/students");
+      const data = await res.json();
+      setStudents(data);
+    } catch (error) {
+      console.error("Error fetching students:", error);
+    }
+  };
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+
+  // Handle Adding
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+  
+    try {
+      // Show loading spinner
+      Swal.fire({
+        title: "Adding student...",
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading(),
+      });
+  
+      const res = await fetch("/api/addStudent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+  
+      const data = await res.json();
+  
+      if (!res.ok) throw new Error(data.message || "Failed to add student");
+  
+      // Success message
+      Swal.fire({
+        icon: "success",
+        title: "Student added successfully!",
+        showConfirmButton: false,
+        timer: 2000,
+      });
+  
+      setIsModalOpen(false);
+      fetchStudents();
+    } catch (error) {
+      setError(error.message);
+  
+      // Error message
+      Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: error.message || "Something went wrong while adding the student.",
+      });
+    }
+  };
+  
 
   return (
     <div className="p-6">
@@ -250,91 +432,336 @@ function Students() {
           placeholder="Search for student"
           className="border border-gray-300 p-2 rounded-md w-60"
         />
-        <button className="bg-gray-200 px-4 py-2 rounded-md flex items-center gap-2">
+        <button
+          className="bg-gray-200 px-4 py-2 rounded-md flex items-center gap-2"
+          onClick={() => setIsModalOpen(true)}
+        >
           <span>➕</span> Add Student Account
         </button>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto mt-5">
-        <table className="w-full border-collapse border border-gray-300">
-          <thead>
-            <tr className="bg-blue-200">
-              <th className="border border-gray-400 px-4 py-2">#</th>
-              <th className="border border-gray-400 px-4 py-2">Student Name</th>
-              <th className="border border-gray-400 px-4 py-2">Age</th>
-              <th className="border border-gray-400 px-4 py-2">Email</th>
-              <th className="border border-gray-400 px-4 py-2">Course</th>
-              <th className="border border-gray-400 px-4 py-2">Year Level</th>
-              <th className="border border-gray-400 px-4 py-2">Status</th>
-              <th className="border border-gray-400 px-4 py-2">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedData.map((row, index) => (
-              <tr key={index} className={index % 2 === 0 ? "bg-gray-100" : "bg-white"}>
-                <td className="border border-gray-400 px-4 py-2">{(currentPage - 1) * itemsPerPage + index + 1}</td>
-                <td className="border border-gray-400 px-4 py-2">{row.name}</td>
-                <td className="border border-gray-400 px-4 py-2">{row.age}</td>
-                <td className="border border-gray-400 px-4 py-2">{row.email}</td>
-                <td className="border border-gray-400 px-4 py-2">{row.course}</td>
-                <td className="border border-gray-400 px-4 py-2">{row.year}</td>
-                <td className="border border-gray-400 px-4 py-2">{row.status}</td>
-                <td className="border border-gray-400 px-4 py-2 flex gap-2">
-                  <button className="text-blue-500">✏️</button>
-                  <button className="text-red-500">🗑️</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {error && <p className="text-red-500 mt-2">{error}</p>}
 
-      {/* Pagination */}
-      <div className="flex justify-end gap-2 mt-4">
-        <button
-          className="bg-gray-300 px-3 py-1 rounded-md"
-          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-          disabled={currentPage === 1}
-        >
-          ◀ Prev
-        </button>
-        <span className="px-3 py-1">{currentPage} / {totalPages}</span>
-        <button
-          className="bg-gray-300 px-3 py-1 rounded-md"
-          onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-          disabled={currentPage === totalPages}
-        >
-          Next ▶
+      <table className="w-full border-collapse mt-4">
+  <thead className="bg-gray-200">
+    <tr>
+      <th className="p-2 border">Name</th>
+      <th className="p-2 border">Email</th>
+      <th className="p-2 border">Course</th>
+      <th className="p-2 border">Year Level</th>
+      <th className="p-2 border">Status</th>
+      <th className="p-2 border">Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {students.map((student) => (
+      <tr key={student.id} className="text-center border">
+        <td className="p-2 border">{student.fullname}</td>
+        <td className="p-2 border">{student.email}</td>
+        <td className="p-2 border">{student.course}</td>
+        <td className="p-2 border">{student.year_level}</td>
+        <td className="p-2 border">{student.status}</td>
+        <td className="p-2 border flex justify-center gap-2">
+          <button className="bg-blue-500 text-white px-3 py-1 rounded" onClick={() => handleView(student)}>
+            View
+          </button>
+          <button className="bg-yellow-500 text-white px-3 py-1 rounded" onClick={() => handleEdit(student)}>
+            Edit
+          </button>
+          <button className="bg-red-500 text-white px-3 py-1 rounded" onClick={() => handleDelete(student.id)}>
+            Delete
+          </button>
+        </td>
+      </tr>
+    ))}
+  </tbody>
+</table>
+
+{/* View Student Modal */}
+{isViewModalOpen && selectedStudent && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+    <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+      <h2 className="text-lg font-semibold mb-4">Student Details</h2>
+      <p><strong>Full Name:</strong> {selectedStudent.fullname}</p>
+      <p><strong>Email:</strong> {selectedStudent.email}</p>
+      <p><strong>Username:</strong> {selectedStudent.username}</p>
+      <p><strong>Course:</strong> {selectedStudent.course}</p>
+      <p><strong>Year Level:</strong> {selectedStudent.year_level}</p>
+      <p><strong>Gender:</strong> {selectedStudent.gender}</p>
+      <p><strong>Birthdate:</strong> {selectedStudent.birthdate.split("T")[0]}</p> {/* Removes time part */}
+      <p><strong>Contact Number:</strong> {selectedStudent.contact_number}</p>
+      <p><strong>Address:</strong> {selectedStudent.address}</p>
+      <p><strong>Status:</strong> {selectedStudent.status}</p>
+      <div className="flex justify-end mt-4">
+        <button className="bg-gray-400 text-white px-4 py-2 rounded" onClick={() => setIsViewModalOpen(false)}>
+          Close
         </button>
       </div>
     </div>
-  );
-}
+  </div>
+)}
+
+
+
+{isEditModalOpen && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+    <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+      <h2 className="text-lg font-semibold mb-4">Edit Student</h2>
+      <form onSubmit={handleEditSubmit} className="flex flex-col gap-2">
+        <input type="text" name="fullname" value={editFormData.fullname} className="border p-2 rounded" onChange={handleEditChange} />
+        <input type="email" name="email" value={editFormData.email} className="border p-2 rounded" onChange={handleEditChange} />
+        <input type="text" name="username" value={editFormData.username} className="border p-2 rounded" onChange={handleEditChange} />
+
+        {/* Add Password Field */}
+        <input type="password" name="password" placeholder="New Password (optional)" className="border p-2 rounded" onChange={handleEditChange} />
+
+        <select name="course" value={editFormData.course} className="border p-2 rounded" onChange={handleEditChange}>
+          <option value="BSIT">BSIT</option>
+          <option value="CJEP">CJEP</option>
+          <option value="BSBA">BSBA</option>
+          <option value="TEP">TEP</option>
+          <option value="HM">HM</option>
+        </select>
+
+        <select name="year_level" value={editFormData.year_level} className="border p-2 rounded" onChange={handleEditChange}>
+          <option value="1">1st Year</option>
+          <option value="2">2nd Year</option>
+          <option value="3">3rd Year</option>
+          <option value="4">4th Year</option>
+        </select>
+
+        <select name="gender" value={editFormData.gender} className="border p-2 rounded" onChange={handleEditChange}>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+          <option value="Other">Other</option>
+        </select>
+
+        <input type="date" name="birthdate" value={editFormData.birthdate} className="border p-2 rounded" onChange={handleEditChange} />
+        <input type="text" name="contact_number" value={editFormData.contact_number} className="border p-2 rounded" onChange={handleEditChange} />
+        <textarea name="address" value={editFormData.address} className="border p-2 rounded" onChange={handleEditChange}></textarea>
+
+        <div className="flex justify-between mt-4">
+          <button type="button" className="bg-red-400 text-white px-4 py-2 rounded" onClick={() => setIsEditModalOpen(false)}>
+            Cancel
+          </button>
+          <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">
+            Update Student
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
+
+
+
+
+{isModalOpen && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+    <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+      <h2 className="text-lg font-semibold mb-4">Add Student</h2>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+        <input type="text" name="first_name" placeholder="First Name" required className="border p-2 rounded" onChange={handleChange} />
+        <input type="text" name="middle_name" placeholder="Middle Name" className="border p-2 rounded" onChange={handleChange} />
+        <input type="text" name="last_name" placeholder="Last Name" required className="border p-2 rounded" onChange={handleChange} />
+        <input type="email" name="email" placeholder="Email" required className="border p-2 rounded" onChange={handleChange} />
+        <input type="text" name="username" placeholder="Username" required className="border p-2 rounded" onChange={handleChange} />
+        <input type="password" name="password" placeholder="Password" required className="border p-2 rounded" onChange={handleChange} />
+
+        {/* Course Selection Dropdown */}
+        <select name="course" required className="border p-2 rounded" onChange={handleChange}>
+          <option value="">Select Course</option>
+          <option value="BSIT">BSIT</option>
+          <option value="CJEP">CJEP</option>
+          <option value="BSBA">BSBA</option>
+          <option value="TEP">TEP</option>
+          <option value="HM">HM</option>
+        </select>
+
+        {/* Year Level Selection Dropdown */}
+        <select name="year_level" required className="border p-2 rounded" onChange={handleChange}>
+          <option value="">Select Year Level</option>
+          <option value="1">1st Year</option>
+          <option value="2">2nd Year</option>
+          <option value="3">3rd Year</option>
+          <option value="4">4th Year</option>
+        </select>
+
+        <select name="gender" required className="border p-2 rounded" onChange={handleChange}>
+          <option value="">Select Gender</option>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+          <option value="Other">Other</option>
+        </select>
+
+        <input type="date" name="birthdate" required className="border p-2 rounded" onChange={handleChange} />
+        <input type="text" name="contact_number" placeholder="Contact Number" className="border p-2 rounded" onChange={handleChange} />
+        <textarea name="address" placeholder="Address" className="border p-2 rounded" onChange={handleChange}></textarea>
+
+        <div className="flex justify-between mt-4">
+          <button type="button" className="bg-red-400 text-white px-4 py-2 rounded" onClick={() => setIsModalOpen(false)}>
+            Cancel
+          </button>
+          <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">
+            Add Student
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
+</div>
+);}
+
 
 
 // PROGRAM HEAD
 function ProgramHead() {
-  const tempData = [
-    { name: "Alyza Nunag", email: "alyza@email.com", status: "Active", semester: "1st Semester", department: "IT", departmentType: "Academic" },
-    { name: "Benedict Abanto", email: "benedict@email.com", status: "Active", semester: "2nd Semester", department: "CS", departmentType: "Academic" },
-    { name: "Joan Minoza", email: "joan@email.com", status: "Inactive", semester: "1st Semester", department: "IT", departmentType: "Academic" },
-    { name: "Juvy Randez", email: "juvy@email.com", status: "Active", semester: "2nd Semester", department: "CS", departmentType: "Academic" },
-    { name: "Karl Domingo", email: "karl@email.com", status: "Inactive", semester: "1st Semester", department: "IT", departmentType: "Academic" },
-    { name: "David Enriquez", email: "david@email.com", status: "Active", semester: "2nd Semester", department: "IT", departmentType: "Academic" },
-    { name: "Sophia Cruz", email: "sophia@email.com", status: "Inactive", semester: "1st Semester", department: "CS", departmentType: "Academic" },
-    { name: "Marco Reyes", email: "marco@email.com", status: "Active", semester: "2nd Semester", department: "IT", departmentType: "Academic" },
-  ];
+  const [editingHead, setEditingHead] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [programHeads, setProgramHeads] = useState([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    department: "",
+    department_type: "Academic",
+    status: "Active",
+  });
 
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
-  const totalPages = Math.ceil(tempData.length / itemsPerPage);
+  useEffect(() => {
+    fetchProgramHeads();
+  }, []);
 
-  const paginatedData = tempData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const fetchProgramHeads = async () => {
+    try {
+      const res = await fetch("/api/program-head");
+      const data = await res.json();
+      setProgramHeads(data);
+    } catch (error) {
+      console.error("Error fetching program heads:", error);
+    }
+  };
+
+  // Handle Adding
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+  
+    try {
+      const res = await fetch("/api/program-head", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+  
+      const result = await res.json();
+  
+      if (res.ok) {
+        Swal.fire({
+          icon: "success",
+          title: "Success!",
+          text: "Program Head added successfully.",
+          timer: 2000,
+          showConfirmButton: false,
+        });
+  
+        setIsModalOpen(false);
+        fetchProgramHeads(); // Refresh data
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Failed!",
+          text: result.message || "Failed to add Program Head.",
+        });
+      }
+    } catch (error) {
+      console.error("Error adding program head:", error);
+  
+      Swal.fire({
+        icon: "error",
+        title: "Error!",
+        text: "Something went wrong while adding the Program Head.",
+      });
+    }
+  };
+  
+  // Open the edit modal with selected program head data
+  const handleEdit = (head) => {
+    setEditingHead({ ...head });
+    setIsEditModalOpen(true);
+  };
+
+  // Save the edited data
+  const handleSaveEdit = async () => {
+    const response = await fetch("/api/program-head", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editingHead),
+    });
+  
+    if (response.ok) {
+      Swal.fire({
+        icon: "success",
+        title: "Success!",
+        text: "Program Head updated successfully.",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      fetchProgramHeads();
+      setIsEditModalOpen(false);
+    } else {
+      const errorData = await response.json();
+      Swal.fire({
+        icon: "error",
+        title: "Update Failed!",
+        text: `Failed to update: ${errorData.message}`,
+      });
+    }
+  };
+
+  // Handle Delete
+  const handleDelete = async (id) => {
+    Swal.fire({
+      title: "Are you sure?",
+      text: "This action cannot be undone!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "No, cancel!",
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        const response = await fetch(`/api/program-head?id=${id}`, { method: "DELETE" });
+  
+        if (response.ok) {
+          Swal.fire({
+            icon: "success",
+            title: "Deleted!",
+            text: "Program Head deleted successfully.",
+            timer: 2000,
+            showConfirmButton: false,
+          });
+          fetchProgramHeads();
+        } else {
+          Swal.fire({
+            icon: "error",
+            title: "Oops!",
+            text: "Failed to delete Program Head.",
+          });
+        }
+      } else {
+        Swal.fire({
+          icon: "info",
+          title: "Cancelled",
+          text: "Deletion was cancelled.",
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      }
+    });
+  };
 
   return (
     <div className="p-6">
@@ -343,7 +770,7 @@ function ProgramHead() {
         <h2 className="text-lg md:text-xl">Program Heads</h2>
         <div className="flex gap-4 text-sm md:text-base">
           <select className="bg-white border border-gray-300 p-2 rounded-md text-gray-700 cursor-pointer">
-            <option>IT</option>
+            <option>BSIT</option>
             <option>CJEP</option>
             <option>BSBA</option>
             <option>BEED</option>
@@ -359,68 +786,173 @@ function ProgramHead() {
           placeholder="Search for program head"
           className="border border-gray-300 p-2 rounded-md w-60"
         />
-        <button className="bg-gray-200 px-4 py-2 rounded-md flex items-center gap-2">
-          <span>➕</span> Add New Program Head
+        <button className="bg-gray-200 px-4 py-2 rounded-md" onClick={() => setIsModalOpen(true)}>
+          ➕ Add New Program Head
         </button>
       </div>
 
-      {/* Table */}
       <div className="overflow-x-auto mt-5">
-        <table className="w-full border-collapse border border-gray-300">
-          <thead>
-            <tr className="bg-blue-200">
-              <th className="border border-gray-400 px-4 py-2">#</th>
-              <th className="border border-gray-400 px-4 py-2">Name</th>
-              <th className="border border-gray-400 px-4 py-2">Email</th>
-              <th className="border border-gray-400 px-4 py-2">Status</th>
-              <th className="border border-gray-400 px-4 py-2">Semester</th>
-              <th className="border border-gray-400 px-4 py-2">Department</th>
-              <th className="border border-gray-400 px-4 py-2">Department Type</th>
-              <th className="border border-gray-400 px-4 py-2">Action</th>
+      {/* Program Head Table */}
+      <table className="w-full border-collapse border border-gray-300">
+        <thead>
+          <tr className="bg-blue-200">
+            <th className="border border-gray-400 px-4 py-2">Name</th>
+            <th className="border border-gray-400 px-4 py-2">Email</th>
+            <th className="border border-gray-400 px-4 py-2">Department</th>
+            <th className="border border-gray-400 px-4 py-2">Department Type</th>
+            <th className="border border-gray-400 px-4 py-2">Status</th>
+            <th className="border border-gray-400 px-4 py-2">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {programHeads.map((head, index) => (
+            <tr key={index} className={index % 2 === 0 ? "bg-gray-100" : "bg-white"}>
+              <td className="border border-gray-400 px-4 py-2">{head.name}</td>
+              <td className="border border-gray-400 px-4 py-2">{head.email}</td>
+              <td className="border border-gray-400 px-4 py-2">{head.department}</td>
+              <td className="border border-gray-400 px-4 py-2">{head.department_type}</td>
+              <td className="border border-gray-400 px-4 py-2">{head.status}</td>
+              <td className="border border-gray-400 px-4 py-2 flex justify-center gap-2">
+                <button
+                  onClick={() => handleEdit(head)}
+                  className="bg-yellow-400 text-white px-2 py-1 rounded-md hover:bg-yellow-500"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(head.id)}
+                  className="bg-red-500 text-white px-2 py-1 rounded-md hover:bg-red-600"
+                >
+                  Delete
+                </button>
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {paginatedData.map((row, index) => (
-              <tr key={index} className={index % 2 === 0 ? "bg-gray-100" : "bg-white"}>
-                <td className="border border-gray-400 px-4 py-2">{(currentPage - 1) * itemsPerPage + index + 1}</td>
-                <td className="border border-gray-400 px-4 py-2">{row.name}</td>
-                <td className="border border-gray-400 px-4 py-2">{row.email}</td>
-                <td className="border border-gray-400 px-4 py-2">{row.status}</td>
-                <td className="border border-gray-400 px-4 py-2">{row.semester}</td>
-                <td className="border border-gray-400 px-4 py-2">{row.department}</td>
-                <td className="border border-gray-400 px-4 py-2">{row.departmentType}</td>
-                <td className="border border-gray-400 px-4 py-2 flex gap-2">
-                  <button className="text-blue-500">✏️</button>
-                  <button className="text-red-500">🗑️</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </table>
 
-      {/* Pagination */}
-      <div className="flex justify-end gap-2 mt-4">
+      {/* Edit Modal */}
+{isEditModalOpen && (
+  <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center">
+    <div className="bg-white p-5 rounded shadow-lg w-1/3">
+      <h2 className="text-xl font-bold mb-4">Edit Program Head</h2>
+
+      <label className="block mb-2">Name:</label>
+      <input
+        type="text"
+        value={editingHead.name}
+        onChange={(e) => setEditingHead({ ...editingHead, name: e.target.value })}
+        className="w-full border border-gray-300 rounded p-2 mb-2"
+      />
+
+      <label className="block mb-2">Email:</label>
+      <input
+        type="email"
+        value={editingHead.email}
+        onChange={(e) => setEditingHead({ ...editingHead, email: e.target.value })}
+        className="w-full border border-gray-300 rounded p-2 mb-2"
+      />
+
+      <label className="block mb-2">Department:</label>
+      <input
+        type="text"
+        value={editingHead.department}
+        onChange={(e) => setEditingHead({ ...editingHead, department: e.target.value })}
+        className="w-full border border-gray-300 rounded p-2 mb-2"
+      />
+
+      <label className="block mb-2">Department Type:</label>
+      <select
+        value={editingHead.department_type}
+        onChange={(e) => setEditingHead({ ...editingHead, department_type: e.target.value })}
+        className="w-full border border-gray-300 rounded p-2 mb-2"
+      >
+        <option value="Academic">Academic</option>
+        <option value="Non-Academic">Non-Academic</option>
+      </select>
+
+      <label className="block mb-2">Status:</label>
+      <select
+        value={editingHead.status}
+        onChange={(e) => setEditingHead({ ...editingHead, status: e.target.value })}
+        className="w-full border border-gray-300 rounded p-2 mb-4"
+      >
+        <option value="Active">Active</option>
+        <option value="Inactive">Inactive</option>
+      </select>
+
+      {/* New Password Field (Optional) */}
+      <label className="block mb-2">New Password (Optional):</label>
+      <input
+        type="password"
+        placeholder="Leave blank to keep the current password"
+        onChange={(e) => setEditingHead({ ...editingHead, newPassword: e.target.value })}
+        className="w-full border border-gray-300 rounded p-2 mb-4"
+      />
+
+      <div className="flex justify-end gap-2">
         <button
-          className="bg-gray-300 px-3 py-1 rounded-md"
-          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-          disabled={currentPage === 1}
+          onClick={() => setIsEditModalOpen(false)}
+          className="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600"
         >
-          ◀ Prev
+          Cancel
         </button>
-        <span className="px-3 py-1">{currentPage} / {totalPages}</span>
         <button
-          className="bg-gray-300 px-3 py-1 rounded-md"
-          onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-          disabled={currentPage === totalPages}
+          onClick={handleSaveEdit}
+          className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
         >
-          Next ▶
+          Save
         </button>
       </div>
     </div>
+  </div>
+)}
+</div>
+
+      {/* Add Program Head Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+            <h2 className="text-lg font-semibold mb-4">Add Program Head</h2>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+              <input type="text" name="name" placeholder="Full Name" required className="border p-2 rounded" onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+              <input type="email" name="email" placeholder="Email" required className="border p-2 rounded" onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+              <input type="password" name="password" placeholder="Password" required className="border p-2 rounded" onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
+              
+              <select name="department" required className="border p-2 rounded" onChange={(e) => setFormData({ ...formData, department: e.target.value })}>
+                <option value="">Select Department</option>
+                <option value="BSIT">BSIT</option>
+                <option value="CJEP">CJEP</option>
+                <option value="BSBA">BSBA</option>
+                <option value="BEED">TEP</option>
+                <option value="HM">HM</option>
+              </select>
+
+              <select name="department_type" required className="border p-2 rounded" onChange={(e) => setFormData({ ...formData, department_type: e.target.value })}>
+                <option value="Academic">Academic</option>
+                <option value="Non-Academic">Non-Academic</option>
+              </select>
+
+              <select name="status" required className="border p-2 rounded" onChange={(e) => setFormData({ ...formData, status: e.target.value })}>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+
+              <div className="flex justify-between mt-4">
+                <button type="button" className="bg-red-400 text-white px-4 py-2 rounded" onClick={() => setIsModalOpen(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">
+                  Add Program Head
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
-
 
 
 // SEMESTER

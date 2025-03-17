@@ -18,36 +18,39 @@ export default function LoginForm() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-
+  
     const res = await fetch("/api/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
     });
-
+  
     const data = await res.json();
     setMessage(data.message);
-
+  
     if (res.ok) {
       alert("Login successful");
-
-      // Store user details in localStorage
-      localStorage.setItem("user", JSON.stringify(data.user));
-
-      // Store username if "Remember Me" is checked, otherwise remove it
+      localStorage.setItem("user", JSON.stringify(data.user))
+  
       if (rememberMe) {
         localStorage.setItem("rememberedUsername", username);
       } else {
         localStorage.removeItem("rememberedUsername");
       }
-
-      if (data.user.user_type === "admin") {
+  
+      // Redirect based on user_type
+    switch (data.user.user_type) {
+      case "admin":
         router.push("/admin_dashboard");
-      } else {
+        break;
+      case "programhead":
+        router.push("/program_head");
+        break;
+      default:
         router.push("/user_dashboard");
-      }
     }
-  };
+  }
+};
 
   return (
     <div className="relative h-screen bg-cover bg-center" style={{ backgroundImage: "url('images/loginbg.png')" }}>

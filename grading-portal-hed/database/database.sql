@@ -2,11 +2,40 @@ CREATE DATABASE grading_portal;
 
 USE grading_portal;
 
+
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     fullname VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     username VARCHAR(50) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
-    usertype ENUM('user', 'admin') NOT NULL DEFAULT 'user'
+    user_type ENUM('user', 'admin', 'programhead') NOT NULL DEFAULT 'user',
+    course VARCHAR(100) DEFAULT NULL,
+    year_level INT DEFAULT NULL,
+    gender ENUM('Male', 'Female', 'Other') DEFAULT NULL,
+    birthdate DATE DEFAULT NULL,
+    contact_number VARCHAR(15) DEFAULT NULL,
+    address TEXT DEFAULT NULL,
+    status ENUM('Active', 'Inactive') NOT NULL DEFAULT 'Active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+
+ALTER TABLE users MODIFY user_type ENUM('user', 'admin', 'programhead') NOT NULL DEFAULT 'user';
+
+
+
+
+CREATE TABLE program_head (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    department VARCHAR(255) NOT NULL,
+    department_type ENUM('Academic', 'Non-Academic') NOT NULL,
+    status ENUM('Active', 'Inactive') DEFAULT 'Active'
+);
+
+
+
+

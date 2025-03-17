@@ -38,7 +38,7 @@ export default function UserDashboard() {
         <ul className="font-poppins mt-6 space-y-3">
           <SidebarItem icon={FiUser} label="Dashboard" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
           <SidebarItem icon={FiBook} label="Grades" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
-          <SidebarItem icon={FiBell} label="Announcements" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
+          <SidebarItem icon={FiBell} label="Schedule" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
           <SidebarItem icon={FiSettings} label="Help" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
 
           {/* Back to Home Button */}
@@ -87,7 +87,7 @@ export default function UserDashboard() {
         <div className="font-poppins">
           {activeTab === "Dashboard" && <Profile />}
           {activeTab === "Grades" && <Grades />}
-          {activeTab === "Announcements" && <Announcements />}
+          {activeTab === "Schedule" && <Schedule />}
           {activeTab === "Help" && <Help />}
         </div>
       </main>
@@ -226,7 +226,7 @@ function Grades() {
 }
 
 
-function Announcements() {
+function Schedule() {
   return <div>Announcements Content</div>;
 }
 
