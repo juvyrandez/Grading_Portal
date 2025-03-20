@@ -54,43 +54,45 @@ export default function UserDashboard() {
 
       {/* Main Content */}
       <main className="font-poppins text-black flex-1 p-6 bg-gray-100 overflow-auto ml-[5rem] md:ml-0">
-        <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-md">
-          <h2 className="text-xl font-bold">{activeTab}</h2>
-          <div className="flex items-center gap-5">
-            {/* Notification Bell */}
-            <button className="relative p-2 rounded-full hover:bg-gray-200 transition">
-              <FiBell size={24} />
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1 rounded-full">3</span>
+  <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-md">
+    <h2 className="text-xl font-bold">{activeTab}</h2>
+    <div className="flex items-center gap-5">
+      {/* Notification Bell */}
+      <button className="relative p-2 rounded-full hover:bg-gray-200 transition">
+        <FiBell size={24} />
+        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1 rounded-full">3</span>
+      </button>
+
+      {/* Profile Dropdown */}
+      <div className="relative">
+        <button className="flex items-center gap-3" onClick={() => setDropdownOpen(!dropdownOpen)}>
+          <span className="font-semibold">{user ? user.username : "User"}</span>
+          <img src="/images/naz.jpg" alt="User" className="w-10 h-10 rounded-full border" />
+        </button>
+
+        {dropdownOpen && (
+          <div className="absolute right-0 mt-2 w-40 bg-white shadow-md rounded-lg p-2">
+            <button onClick={() => setActiveTab("Profile")} className="w-full text-left px-4 py-2 hover:bg-gray-200 rounded-md flex items-center gap-2">
+              <FiUser /> Profile
             </button>
-
-            {/* Profile Dropdown */}
-            <div className="relative">
-              <button className="flex items-center gap-3" onClick={() => setDropdownOpen(!dropdownOpen)}>
-                <span className="font-semibold">{user ? user.username : "User"}</span>
-                <img src="/images/naz.jpg" alt="User" className="w-10 h-10 rounded-full border" />
-              </button>
-
-              {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-40 bg-white shadow-md rounded-lg p-2">
-                  <button onClick={() => setActiveTab("Profile")} className="w-full text-left px-4 py-2 hover:bg-gray-200 rounded-md flex items-center gap-2">
-                    <FiUser /> Profile
-                  </button>
-                  <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-red-500 hover:bg-gray-200 rounded-md flex items-center gap-2">
-                    <FiLogOut /> Logout
-                  </button>
-                </div>
-              )}
-            </div>
+            <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-red-500 hover:bg-gray-200 rounded-md flex items-center gap-2">
+              <FiLogOut /> Logout
+            </button>
           </div>
-        </div>
+        )}
+      </div>
+    </div>
+  </div>
 
-        <div className="font-poppins">
-          {activeTab === "Dashboard" && <Profile />}
-          {activeTab === "Grades" && <Grades />}
-          {activeTab === "Schedule" && <Schedule />}
-          {activeTab === "Help" && <Help />}
-        </div>
-      </main>
+  {/* Content Area - Render based on activeTab */}
+  <div className="font-poppins">
+    {activeTab === "Dashboard" && <Profile />}
+    {activeTab === "Grades" && user && <Grades studentId={user.id} />}
+    {activeTab === "Schedule" && <Schedule />}
+    {activeTab === "Help" && <Help />}
+  </div>
+</main>
+
     </div>
   );
 }
@@ -163,67 +165,136 @@ function Profile() {
 }
 
 
+function Grades({ studentId }) {
+  const [grades, setGrades] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedSemester, setSelectedSemester] = useState("1st Sem");
 
-function Grades() {
-  const tempData = [
-    { id: 1, code: "GEE AH", description: "Understanding the Self", units: 3, midterm: 1.75, final: 2.00, remarks: "Passed" },
-    { id: 2, code: "GEE SC", description: "Science, Technology & Society", units: 3, midterm: 2.00, final: 2.25, remarks: "Passed" },
-    { id: 3, code: "GEE MA", description: "Mathematics in the Modern World", units: 3, midterm: 1.50, final: 1.75, remarks: "Passed" },
-    { id: 4, code: "GEE EN", description: "English for Academic Purposes", units: 3, midterm: 2.25, final: 2.50, remarks: "Passed" },
-    { id: 5, code: "GEE HI", description: "Readings in Philippine History", units: 3, midterm: 1.75, final: 2.00, remarks: "Passed" },
-    { id: 6, code: "GEE IT", description: "Introduction to Computing", units: 3, midterm: 2.00, final: 2.25, remarks: "Passed" },
-    { id: 7, code: "GEE PE", description: "Physical Education 1", units: 2, midterm: "A", final: "A", remarks: "Passed" },
-  ];
+  // Fetch grades when studentId or selectedSemester changes
+  useEffect(() => {
+    const fetchGrades = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetch(
+          `/api/getGrades?studentId=${studentId}&semester=${selectedSemester}`
+        );
+        if (!response.ok) throw new Error("Failed to fetch grades");
+
+        const data = await response.json();
+
+        const updatedGrades = data.grades.map((grade) => ({
+          ...grade,
+          remarks:
+            grade.final_grade === null || grade.final_grade > 3.0
+              ? "Failed"
+              : "Passed",
+        }));
+
+        setGrades(updatedGrades);
+      } catch (err) {
+        console.error("Error fetching grades:", err);
+        setError("Failed to load grades.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchGrades();
+  }, [studentId, selectedSemester]);
+
+  // Export grades to CSV file
+  const handleExport = () => {
+    const csvRows = [
+      ["Subject Code", "Descriptive Title", "Units", "Midterm", "Final", "Remarks"],
+      ...grades.map((grade) => [
+        grade.subject_code,
+        grade.subject_description,
+        grade.units,
+        grade.midterm_grade || "N/A",
+        grade.final_grade || "N/A",
+        grade.remarks,
+      ]),
+    ];
+
+    const csvContent = "data:text/csv;charset=utf-8," + csvRows.map((row) => row.join(",")).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Grades_${selectedSemester}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  if (loading) return <p className="text-gray-500">Loading grades...</p>;
+  if (error) return <p className="text-red-500">{error}</p>;
 
   return (
-    <div className="p-6">
-      {/* Header with Buttons */}
-      <div className="bg-blue-100 p-4 flex justify-between items-center flex-wrap rounded-lg shadow-md">
-        <h2 className="text-lg md:text-xl">REPORT OF GRADES</h2>
-        <div className="flex gap-4 text-sm md:text-base">
-          <span className="text-gray-700 cursor-pointer hover:underline">View Prospectus</span>
-          <div className="relative">
-            <select className="bg-white border border-gray-300 p-2 rounded-md text-gray-700 cursor-pointer">
-              <option>2024-2025 2nd Semester</option>
-              <option>2024-2025 1st Semester</option>
-              <option>2023-2024 2nd Semester</option>
-            </select>
-          </div>
+    <div className="p-4 bg-white shadow-md rounded-lg mt-8">
+      {/* Header and Semester Dropdown */}
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="font-bold text-lg">Grades - {selectedSemester}</h2>
+        <div className="flex gap-3">
+          <select
+            value={selectedSemester}
+            onChange={(e) => setSelectedSemester(e.target.value)}
+            className="p-2 border rounded-md"
+          >
+            <option value="1st Sem">1st Sem</option>
+            <option value="2nd Sem">2nd Sem</option>
+            <option value="Summer">Summer</option>
+          </select>
+          <button
+            onClick={handleExport}
+            className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition"
+          >
+            Export CSV
+          </button>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto mt-5">
+      {/* Grades Table */}
+      {grades.length > 0 ? (
         <table className="w-full border-collapse border border-gray-300">
-          <thead>
-            <tr className="bg-blue-200">
-              <th className="border border-gray-400 px-4 py-2">#</th>
-              <th className="border border-gray-400 px-4 py-2">Code</th>
-              <th className="border border-gray-400 px-4 py-2">Descriptive</th>
-              <th className="border border-gray-400 px-4 py-2">Units</th>
-              <th className="border border-gray-400 px-4 py-2">Midterm</th>
-              <th className="border border-gray-400 px-4 py-2">Final</th>
-              <th className="border border-gray-400 px-4 py-2">Remarks</th>
+          <thead className="bg-sky-800 text-white">
+            <tr>
+              <th className="border p-2">Code</th>
+              <th className="border p-2">Descriptive</th>
+              <th className="border p-2">Units</th>
+              <th className="border p-2">Midterm</th>
+              <th className="border p-2">Final</th>
+              <th className="border p-2">Remarks</th>
             </tr>
           </thead>
           <tbody>
-            {tempData.map((row, index) => (
-              <tr key={index} className={index % 2 === 0 ? "bg-gray-100" : "bg-white"}>
-                <td className="border border-gray-400 px-4 py-2">{row.id}</td>
-                <td className="border border-gray-400 px-4 py-2">{row.code}</td>
-                <td className="border border-gray-400 px-4 py-2">{row.description}</td>
-                <td className="border border-gray-400 px-4 py-2">{row.units}</td>
-                <td className="border border-gray-400 px-4 py-2">{row.midterm}</td>
-                <td className="border border-gray-400 px-4 py-2">{row.final}</td>
-                <td className="border border-gray-400 px-4 py-2">{row.remarks}</td>
+            {grades.map((grade) => (
+              <tr key={grade.id} className="hover:bg-sky-200 transition">
+                <td className="border p-2">{grade.subject_code}</td>
+                <td className="border p-2">{grade.subject_description}</td>
+                <td className="border p-2">{grade.units}</td>
+                <td className="border p-2">{grade.midterm_grade || "N/A"}</td>
+                <td className="border p-2">{grade.final_grade || "N/A"}</td>
+                <td
+                  className={`border p-2 font-semibold ${
+                    grade.remarks === "Passed" ? "text-green-600" : "text-red-600"
+                  }`}
+                >
+                  {grade.remarks}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
+      ) : (
+        <p className="text-gray-500">No grades recorded for this semester.</p>
+      )}
     </div>
   );
 }
+
 
 
 function Schedule() {
