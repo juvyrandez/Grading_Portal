@@ -2,7 +2,13 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { FiUsers, FiBook, FiClipboard, FiSettings, FiLogOut, FiMenu, FiBell, FiUser } from "react-icons/fi";
 import Swal from "sweetalert2";
-import { FaLaptopCode, FaBalanceScale, FaBusinessTime, FaChalkboardTeacher } from "react-icons/fa";
+import { Bar } from "react-chartjs-2";
+import { FaUserTie } from "react-icons/fa";
+import { FaUserGraduate, FaChalkboardTeacher, FaBookOpen } from "react-icons/fa";
+import { FaEye, FaEdit, FaTrashAlt } from "react-icons/fa";
+import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from "chart.js";
+ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
+
 
 export default function AdminDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -51,7 +57,7 @@ export default function AdminDashboard() {
       <aside className={`bg-gradient-to-b from-sky-700 to-blue-950 text-white transition-all 
         ${isSidebarOpen ? "w-64 p-5" : "w-20 p-3"} min-h-screen fixed md:relative`}>
         <div className="flex items-center justify-between">
-          {isSidebarOpen && <h1 className="text-lg font-bold">HED Admin</h1>}
+        {isSidebarOpen && <img src="/images/logo2.png" alt="Logo" className="h-20 w-auto" />}
           {/* Sidebar Toggle Button - Now Inside Sidebar */}
           <button className="text-white p-2" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
             <FiMenu size={28} />
@@ -62,7 +68,7 @@ export default function AdminDashboard() {
           <SidebarItem icon={FiClipboard} label="Dashboard" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
           <SidebarItem icon={FiUsers} label="Students" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
           <SidebarItem icon={FiBook} label="ProgramHead" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
-          <SidebarItem icon={FiClipboard} label="Semester" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
+          <SidebarItem icon={FiClipboard} label="Subjects" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
           <SidebarItem icon={FiSettings} label="Help" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
         </ul>
       </aside>
@@ -78,20 +84,17 @@ export default function AdminDashboard() {
               <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1 rounded-full">3</span>
             </button>
 
-            {/* Profile Dropdown */}
-            <div className="relative">
-              <button className="flex items-center gap-2" onClick={() => setDropdownOpen(!dropdownOpen)}>
-                <span className="font-semibold">{admin?.username || "Admin"}</span>
-                <img src={"/images/youtube.png"} alt="Admin" className="w-10 h-10 rounded-full border" />
-              </button>
+            {/* Admin Profile Dropdown */}
+<div className="relative">
+  <button className="flex items-center gap-2" onClick={() => setDropdownOpen(!dropdownOpen)}>
+    <span className="font-semibold">{admin?.username || "Admin"}</span>
+    <FaUserTie className="w-10 h-10 p-2 text-gray-500 border-2 border-blue-500 rounded-full" />
+  </button>
+
 
               {dropdownOpen && (
                 <div className="absolute right-0 mt-2 w-40 bg-white shadow-lg rounded-lg">
                   <ul className="py-2">
-                    <li className="flex items-center gap-2 px-4 py-2 hover:bg-gray-200 cursor-pointer">
-                      <FiUser />
-                      <span>Profile</span>
-                    </li>
                     <li className="flex items-center gap-2 px-4 py-2 text-red-500 hover:bg-gray-200 cursor-pointer" onClick={handleLogout}>
                       <FiLogOut />
                       <span>Logout</span>
@@ -108,7 +111,7 @@ export default function AdminDashboard() {
           {activeTab === "Dashboard" && <Dashboard />}
           {activeTab === "Students" && <Students />}
           {activeTab === "ProgramHead" && <ProgramHead />}
-          {activeTab === "Semester" && <Semester />}
+          {activeTab === "Subjects" && <Subjects />}
           {activeTab === "Help" && <Help />}
         </div>
       </main>
@@ -133,80 +136,100 @@ function SidebarItem({ icon: Icon, label, activeTab, setActiveTab, isSidebarOpen
 
 // ADMIN DASHBOARD
 function Dashboard() {
-  const [announcements] = useState([
-    { id: 1, title: "Grading Period Opens", date: "March 10, 2025" },
-    { id: 2, title: "Teacher Evaluation Due", date: "March 15, 2025" },
-    { id: 3, title: "Final Exams Schedule", date: "March 20, 2025" },
-  ]);
+  const [studentsCount, setStudentsCount] = useState(0);
+  const [programHeadsCount, setProgramHeadsCount] = useState(0);
+  const [subjectsCount, setSubjectsCount] = useState(0);
+  const [departmentCounts, setDepartmentCounts] = useState({
+    BSIT: 0,
+    CJEP: 0,
+    BSBA: 0,
+    TEP: 0,
+    HM: 0,
+  });
 
-  const [activities] = useState([
-    { id: 1, user: "Admin", action: "Approved a student grade", time: "2 hrs ago" },
-    { id: 2, user: "Prof. Smith", action: "Added a new subject", time: "5 hrs ago" },
-    { id: 3, user: "Admin", action: "Updated semester details", time: "1 day ago" },
-  ]);
+  useEffect(() => {
+    fetch("/api/getCounts")
+      .then((res) => res.json())
+      .then((data) => {
+        setStudentsCount(data.students);
+        setProgramHeadsCount(data.programHeads);
+        setSubjectsCount(data.subjects);
+      })
+      .catch((err) => console.error("Error fetching counts:", err));
+
+    fetch("/api/getDepartmentCounts")
+      .then((res) => res.json())
+      .then((data) => setDepartmentCounts(data))
+      .catch((err) => console.error("Error fetching department counts:", err));
+  }, []);
+
+  // Chart Data
+  const chartData = {
+    labels: ["BSIT", "CJEP", "BSBA", "TEP", "HM"],
+    datasets: [
+      {
+        label: "Students per Department",
+        data: [
+          departmentCounts.BSIT,
+          departmentCounts.CJEP,
+          departmentCounts.BSBA,
+          departmentCounts.TEP,
+          departmentCounts.HM,
+        ],
+        backgroundColor: ["#4CAF50", "#FF9800", "#03A9F4", "#E91E63", "#9C27B0"],
+        borderRadius: 5,
+      },
+    ],
+  };
+
+  // Chart Options to resize and prevent it from being too long
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+    },
+    scales: {
+      y: { beginAtZero: true },
+    },
+  };
 
   return (
     <div className="p-6">
-      {/* Dashboard Title */}
-      <h2 className="text-2xl font-semibold">Admin Dashboard</h2>
+      <h2 className="text-2xl font-semibold mb-4">Admin Dashboard</h2>
 
-      {/* Stats Overview - Matches Student Profile Style */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-        <div className="bg-white p-4 rounded-lg shadow-md text-center">
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white p-4 rounded-lg shadow-md text-center flex flex-col items-center">
+          <FaUserGraduate className="text-blue-500 text-4xl mb-2" />
           <h3 className="text-lg font-medium">Total Students</h3>
-          <p className="text-gray-700 text-2xl font-bold">120</p>
+          <p className="text-gray-700 text-2xl font-bold">{studentsCount}</p>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-md text-center">
-          <h3 className="text-lg font-medium">Total Teachers</h3>
-          <p className="text-gray-700 text-2xl font-bold">15</p>
+
+        <div className="bg-white p-4 rounded-lg shadow-md text-center flex flex-col items-center">
+          <FaChalkboardTeacher className="text-green-500 text-4xl mb-2" />
+          <h3 className="text-lg font-medium">Total Program Heads</h3>
+          <p className="text-gray-700 text-2xl font-bold">{programHeadsCount}</p>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-md text-center">
-          <h3 className="text-lg font-medium">Total Programs</h3>
-          <p className="text-gray-700 text-2xl font-bold">5</p>
+
+        <div className="bg-white p-4 rounded-lg shadow-md text-center flex flex-col items-center">
+          <FaBookOpen className="text-yellow-500 text-4xl mb-2" />
+          <h3 className="text-lg font-medium">Total Subjects</h3>
+          <p className="text-gray-700 text-2xl font-bold">{subjectsCount}</p>
         </div>
       </div>
 
-      {/* Quick Actions - Matches Student Profile Button Style */}
+      {/* Department Analytics Chart */}
       <div className="mt-6 bg-white p-4 rounded-lg shadow-md">
-        <h3 className="text-lg font-medium">Quick Actions</h3>
-        <div className="flex gap-4 mt-4">
-          <button className="border border-gray-300 px-4 py-2 rounded-md">➕ Add Student</button>
-          <button className="border border-gray-300 px-4 py-2 rounded-md">➕ Add Teacher</button>
-          <button className="border border-gray-300 px-4 py-2 rounded-md">➕ Add Program</button>
-        </div>
-      </div>
-
-      {/* Recent Activities & Announcements */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-        {/* Recent Activities */}
-        <div className="bg-white p-4 rounded-lg shadow-md">
-          <h3 className="text-lg font-medium">Recent Activities</h3>
-          <ul className="mt-3">
-            {activities.map((activity) => (
-              <li key={activity.id} className="border-b py-2">
-                <span className="font-bold">{activity.user}</span> {activity.action} -{" "}
-                <span className="text-gray-500">{activity.time}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Announcements */}
-        <div className="bg-white p-4 rounded-lg shadow-md">
-          <h3 className="text-lg font-medium">Announcements</h3>
-          <ul className="mt-3">
-            {announcements.map((announcement) => (
-              <li key={announcement.id} className="border-b py-2">
-                <span className="font-bold">{announcement.title}</span> -{" "}
-                <span className="text-gray-500">{announcement.date}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <h3 className="text-lg font-medium mb-2">Department Analytics</h3>
+        <div className="h-96 w-full"> {/* Increased height from h-64 to h-96 */}
+  <Bar data={chartData} options={chartOptions} />
+</div>
       </div>
     </div>
   );
 }
+
 
 
 
@@ -413,14 +436,11 @@ const [editFormData, setEditFormData] = useState({});
             <option>4th Year</option>
           </select>
           <select className="bg-white border border-gray-300 p-2 rounded-md text-gray-700 cursor-pointer">
-            <option>Bachelor of Science in IT</option>
-            <option>Criminology</option>
+            <option>BSIT</option>
+            <option>CJEP</option>
             <option>BSBA</option>
-            <option>BEED</option>
-          </select>
-          <select className="bg-white border border-gray-300 p-2 rounded-md text-gray-700 cursor-pointer">
-            <option>2024-2025</option>
-            <option>2023-2024</option>
+            <option>TEP</option>
+            <option>HM</option>
           </select>
         </div>
       </div>
@@ -462,16 +482,16 @@ const [editFormData, setEditFormData] = useState({});
         <td className="p-2 border">{student.year_level}</td>
         <td className="p-2 border">{student.status}</td>
         <td className="p-2 border flex justify-center gap-2">
-          <button className="bg-blue-500 text-white px-3 py-1 rounded" onClick={() => handleView(student)}>
-            View
-          </button>
-          <button className="bg-yellow-500 text-white px-3 py-1 rounded" onClick={() => handleEdit(student)}>
-            Edit
-          </button>
-          <button className="bg-red-500 text-white px-3 py-1 rounded" onClick={() => handleDelete(student.id)}>
-            Delete
-          </button>
-        </td>
+  <button className="text-blue-500 hover:text-blue-700" onClick={() => handleView(student)}>
+    <FaEye className="w-5 h-5" />
+  </button>
+  <button className=" hover:text-yellow-700" onClick={() => handleEdit(student)}>
+    <FaEdit className="w-5 h-5" />
+  </button>
+  <button className="text-red-500 hover:text-red-700" onClick={() => handleDelete(student.id)}>
+    <FaTrashAlt className="w-5 h-5" />
+  </button>
+</td>
       </tr>
     ))}
   </tbody>
@@ -813,19 +833,19 @@ function ProgramHead() {
               <td className="border border-gray-400 px-4 py-2">{head.department_type}</td>
               <td className="border border-gray-400 px-4 py-2">{head.status}</td>
               <td className="border border-gray-400 px-4 py-2 flex justify-center gap-2">
-                <button
-                  onClick={() => handleEdit(head)}
-                  className="bg-yellow-400 text-white px-2 py-1 rounded-md hover:bg-yellow-500"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(head.id)}
-                  className="bg-red-500 text-white px-2 py-1 rounded-md hover:bg-red-600"
-                >
-                  Delete
-                </button>
-              </td>
+  <button
+    onClick={() => handleEdit(head)}
+    className=" hover:text-yellow-500"
+  >
+    <FaEdit className="w-5 h-5" />
+  </button>
+  <button
+    onClick={() => handleDelete(head.id)}
+    className="text-red-500 hover:text-red-600"
+  >
+    <FaTrashAlt className="w-5 h-5" />
+  </button>
+</td>
             </tr>
           ))}
         </tbody>
@@ -955,108 +975,198 @@ function ProgramHead() {
 }
 
 
-// SEMESTER
-function Semester() {
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+// SUBJECTS
+function Subjects() {
+  const [department, setDepartment] = useState("");
+  const [yearLevel, setYearLevel] = useState("");
+  const [semester, setSemester] = useState("");
+  const [subjects, setSubjects] = useState([{ subjectCode: "", subjectName: "", units: "" }]);
+  const [subjectList, setSubjectList] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  // Sample Data (Only 1st Sem & 2nd Sem)
-  const semesterData = [
-    {
-      name: "1st Semester",
-      schoolYear: "2024-2025",
-      region: "10",
-      schoolName: "SRCB",
-      status: "Active",
-      semester: "1st Sem",
-    },
-  ];
+  // Fetch subjects from the database with filters
+  const fetchSubjects = () => {
+    if (department && yearLevel && semester) {
+      setLoading(true);
+      fetch(`/api/fetchSubjects?department=${department}&yearLevel=${yearLevel}&semester=${semester}`)
+        .then((res) => res.json())
+        .then((data) => setSubjectList(data))
+        .catch((err) => console.error("Error fetching subjects:", err))
+        .finally(() => setLoading(false));
+    }
+  };
 
-  const totalPages = Math.ceil(semesterData.length / itemsPerPage);
-  const paginatedData = semesterData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  // Call fetchSubjects on filter change
+  useEffect(() => {
+    fetchSubjects();
+  }, [department, yearLevel, semester]);
+
+  // Add a new empty row for subjects input
+  const addNewSubjectRow = () => setSubjects([...subjects, { subjectCode: "", subjectName: "", units: "" }]);
+
+  // Handle input changes for each subject row
+  const handleSubjectChange = (index, field, value) => {
+    const updatedSubjects = [...subjects];
+    updatedSubjects[index][field] = value;
+    setSubjects(updatedSubjects);
+  };
+
+  // Add subjects to the database
+  const handleAddSubjects = async () => {
+    if (!department || !yearLevel || !semester) {
+      alert("Please select Department, Year Level, and Semester.");
+      return;
+    }
+
+    const incompleteSubjects = subjects.some((subject) => !subject.subjectCode || !subject.subjectName || !subject.units);
+
+    if (incompleteSubjects) {
+      alert("Please fill in all subject fields.");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/addSubjects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          department,
+          yearLevel,
+          semester,
+          subjects,
+        }),
+      });
+  
+      const data = await response.json();
+  
+      if (data.success) {
+        Swal.fire({
+          icon: "success",
+          title: "Subjects added successfully!",
+          showConfirmButton: false,
+          timer: 1500,
+        });
+        setSubjects([{ subjectCode: "", subjectName: "", units: "" }]);
+        fetchSubjects(); // ✅ Refresh the subject list after adding
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Failed to add subjects",
+          text: data.message || "Something went wrong. Please try again.",
+        });
+      }
+    } catch (error) {
+      console.error("Error adding subjects:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: "An unexpected error occurred. Please try again.",
+      });
+    }
+  };
 
   return (
-    <div className="p-6">
-      {/* Header Section */}
-      <div className="bg-blue-100 p-4 flex justify-between items-center flex-wrap rounded-lg shadow-md">
-        <h2 className="text-lg md:text-xl">View Semester</h2>
-        <div className="flex gap-4 text-sm md:text-base">
-          <select className="bg-white border border-gray-300 p-2 rounded-md text-gray-700 cursor-pointer">
-            <option>1st Sem</option>
-            <option>2nd Sem</option>
-          </select>
-        </div>
+    <div className="mt-10 p-8 pt-8 bg-white rounded-lg shadow-md space-y-6">
+      <h2 className="text-3xl font-bold mb-4">Add & View Subjects</h2>
+  
+      {/* Department, Year Level, Semester Filters */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <select value={department} onChange={(e) => setDepartment(e.target.value)} className="p-2 border rounded-lg shadow-sm">
+          <option value="">Select Department</option>
+          {["BSIT", "CJEP", "BSBA", "TEP", "HM"].map((dept) => (
+            <option key={dept} value={dept}>
+              {dept}
+            </option>
+          ))}
+        </select>
+  
+        <select value={yearLevel} onChange={(e) => setYearLevel(e.target.value)} className="p-2 border rounded-lg shadow-sm">
+          <option value="">Select Year Level</option>
+          {["1st Year", "2nd Year", "3rd Year", "4th Year"].map((year) => (
+            <option key={year} value={year}>
+              {year}
+            </option>
+          ))}
+        </select>
+  
+        <select value={semester} onChange={(e) => setSemester(e.target.value)} className="p-2 border rounded-lg shadow-sm">
+          <option value="">Select Semester</option>
+          {["1st Semester", "2nd Semester", "Summer"].map((sem) => (
+            <option key={sem} value={sem}>
+              {sem}
+            </option>
+          ))}
+        </select>
       </div>
-
-      {/* Search & Add Button */}
-      <div className="flex justify-between items-center mt-4">
-        <input
-          type="text"
-          placeholder="Search for semester"
-          className="border border-gray-300 p-2 rounded-md w-60"
-        />
-        <button className="bg-gray-200 px-4 py-2 rounded-md flex items-center gap-2">
-          <span>➕</span> Add Semester
+  
+      {/* Subject Inputs */}
+      <div className="space-y-3">
+        {subjects.map((subject, index) => (
+          <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <input
+              type="text"
+              placeholder="Subject Code"
+              value={subject.subjectCode}
+              onChange={(e) => handleSubjectChange(index, "subjectCode", e.target.value)}
+              className="p-2 border rounded-lg shadow-sm"
+            />
+            <input
+              type="text"
+              placeholder="Subject Name"
+              value={subject.subjectName}
+              onChange={(e) => handleSubjectChange(index, "subjectName", e.target.value)}
+              className="p-2 border rounded-lg shadow-sm"
+            />
+            <input
+              type="number"
+              placeholder="Units"
+              value={subject.units}
+              onChange={(e) => handleSubjectChange(index, "units", e.target.value)}
+              className="p-2 border rounded-lg shadow-sm"
+            />
+          </div>
+        ))}
+      </div>
+  
+      {/* Buttons */}
+      <div className="flex gap-4 mt-3">
+        <button onClick={addNewSubjectRow} className="bg-green-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-green-600">
+          + Add Another Subject
+        </button>
+  
+        <button onClick={handleAddSubjects} className="bg-blue-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-600">
+          Save All Subjects
         </button>
       </div>
-
-      {/* Table */}
-      <div className="overflow-x-auto mt-5">
-        <table className="w-full border-collapse border border-gray-300">
+  
+      {/* Display Subject Table */}
+      {loading ? (
+        <p className="text-center mt-4 text-gray-500">Loading subjects...</p>
+      ) : subjectList.length > 0 ? (
+        <table className="w-full border-collapse border border-gray-300 mt-4 shadow-md">
           <thead>
-            <tr className="bg-blue-200">
-              <th className="border border-gray-400 px-4 py-2">#</th>
-              <th className="border border-gray-400 px-4 py-2">Name</th>
-              <th className="border border-gray-400 px-4 py-2">School Year</th>
-              <th className="border border-gray-400 px-4 py-2">Region</th>
-              <th className="border border-gray-400 px-4 py-2">School Name</th>
-              <th className="border border-gray-400 px-4 py-2">Status</th>
-              <th className="border border-gray-400 px-4 py-2">Action</th>
+            <tr className="bg-gray-200">
+              <th className="border p-3 text-sm">Subject Code</th>
+              <th className="border p-3 text-sm">Subject Name</th>
+              <th className="border p-3 text-sm">Units</th>
             </tr>
           </thead>
           <tbody>
-            {paginatedData.map((row, index) => (
-              <tr key={index} className={index % 2 === 0 ? "bg-gray-100" : "bg-white"}>
-                <td className="border border-gray-400 px-4 py-2">{(currentPage - 1) * itemsPerPage + index + 1}</td>
-                <td className="border border-gray-400 px-4 py-2">{row.name}</td>
-                <td className="border border-gray-400 px-4 py-2">{row.schoolYear}</td>
-                <td className="border border-gray-400 px-4 py-2">{row.region}</td>
-                <td className="border border-gray-400 px-4 py-2">{row.schoolName}</td>
-                <td className="border border-gray-400 px-4 py-2">{row.status}</td>
-                <td className="border border-gray-400 px-4 py-2 flex gap-2">
-                  <button className="text-blue-500">✏️</button>
-                  <button className="text-red-500">🗑️</button>
-                </td>
+            {subjectList.map((sub, index) => (
+              <tr key={index} className="hover:bg-gray-100">
+                <td className="border p-3 text-center text-sm">{sub.subject_code}</td>
+                <td className="border p-3 text-center text-sm">{sub.subject_name}</td>
+                <td className="border p-3 text-center text-sm">{sub.units}</td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
-
-      {/* Pagination */}
-      <div className="flex justify-end gap-2 mt-4">
-        <button
-          className="bg-gray-300 px-3 py-1 rounded-md"
-          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-          disabled={currentPage === 1}
-        >
-          ◀ Prev
-        </button>
-        <span className="px-3 py-1">{currentPage} / {totalPages}</span>
-        <button
-          className="bg-gray-300 px-3 py-1 rounded-md"
-          onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-          disabled={currentPage === totalPages}
-        >
-          Next ▶
-        </button>
-      </div>
+      ) : (
+        <p className="text-center mt-4 text-gray-500">No subjects found for this selection.</p>
+      )}
     </div>
-  );
-}
+  );  
+}  
 
 
 

@@ -1,11 +1,12 @@
 "use client";
-
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { FiUser } from "react-icons/fi";
 import ScrollToTop from "../components/ScrollToTop";
 import "@fontsource/poppins";
+import { FaUserCircle } from "react-icons/fa";
+
 
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -49,7 +50,7 @@ export default function Home() {
               <div className="relative">
                 <button className="flex items-center gap-3" onClick={() => setDropdownOpen(!dropdownOpen)}>
                   <span className="font-semibold">{user.username}</span>
-                  <img src="/images/naz.jpg" alt="User" className="w-10 h-10 rounded-full border" />
+                  <FaUserCircle className="w-10 h-10 text-gray-500" />
                 </button>
 
                 {dropdownOpen && (
@@ -119,34 +120,34 @@ export default function Home() {
 
 
       {/* Hero Section */}
-      <section
-        id="home"
-        className="bg-cover bg-center h-screen text-white flex items-start justify-start pl-40 pt-48 relative mt-20"
-        style={{ backgroundImage: "url('/images/mainbg.jpg')" }}
-      >
-        {/* Left Arrow */}
-        <button className="absolute left-16 top-1/2 transform -translate-y-1/2 text-white text-5xl">
-          &#10094;
-        </button>
+<section
+  id="home"
+  className="bg-cover bg-center h-screen text-white flex items-center justify-center px-6 sm:items-start sm:justify-start sm:pl-40 sm:pt-48 relative mt-20"
+  style={{ backgroundImage: "url('/images/mainbg.jpg')" }}
+>
+  {/* Left Arrow */}
+  <button className="hidden sm:block absolute left-4 sm:left-16 top-1/2 transform -translate-y-1/2 text-white text-4xl sm:text-5xl">
+    &#10094;
+  </button>
 
-        <div className="font-poppins w-full max-w-5xl text-left">
-          <h1 className="text-5xl md:text-6xl font-bold mb-6">
-            Welcome to the St. Rita’s College of Balingasag Higher Education Grading Portal
-          </h1>
-          <p className="text-xl md:text-2xl mb-8">
-          The official grading portal for St. Rita’s College of Balingasag. This platform allows students to easily view their grades, track academic progress, and stay updated on course performance. Faculty can also upload and manage grades efficiently.
-          We’re here to support your academic journey every step of the way.
-          </p>
-          <button className="font-poppins bg-sky-900 hover:bg-blue-800 px-8 py-4 text-xl rounded-md border border-white">
-  Get Started
-</button>
-        </div>
+  <div className="font-poppins w-full max-w-5xl text-center sm:text-left">
+    <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold mb-4 sm:mb-6">
+      Welcome to the St. Rita’s College of Balingasag Higher Education Grading Portal
+    </h1>
+    <p className="text-base sm:text-xl md:text-2xl mb-6 sm:mb-8">
+      The official grading portal for St. Rita’s College of Balingasag. This platform allows students to easily view their grades, track academic progress, and stay updated on course performance. Faculty can also upload and manage grades efficiently. We’re here to support your academic journey every step of the way.
+    </p>
+    <button className="font-poppins bg-sky-900 hover:bg-blue-800 px-6 sm:px-8 py-3 sm:py-4 text-lg sm:text-xl rounded-md border border-white">
+      Get Started
+    </button>
+  </div>
 
-        {/* Right Arrow */}
-        <button className="absolute right-16 top-1/2 transform -translate-y-1/2 text-white text-5xl">
-          &#10095;
-        </button>
-      </section>
+  {/* Right Arrow */}
+  <button className="hidden sm:block absolute right-4 sm:right-16 top-1/2 transform -translate-y-1/2 text-white text-4xl sm:text-5xl">
+    &#10095;
+  </button>
+</section>
+
 
 
 

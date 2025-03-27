@@ -21,11 +21,6 @@ CREATE TABLE users (
 );
 
 
-ALTER TABLE users MODIFY user_type ENUM('user', 'admin', 'programhead') NOT NULL DEFAULT 'user';
-
-
-
-
 CREATE TABLE program_head (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -35,6 +30,45 @@ CREATE TABLE program_head (
     department_type ENUM('Academic', 'Non-Academic') NOT NULL,
     status ENUM('Active', 'Inactive') DEFAULT 'Active'
 );
+
+
+CREATE TABLE subjects (
+    subject_id INT PRIMARY KEY AUTO_INCREMENT,
+    department VARCHAR(50) NOT NULL,
+    year_level VARCHAR(20) NOT NULL,
+    semester VARCHAR(20) NOT NULL,
+    subject_code VARCHAR(20) NOT NULL,
+    subject_name VARCHAR(100) NOT NULL,
+    units INT NOT NULL
+);
+
+CREATE TABLE subjects (
+    subject_id INT PRIMARY KEY AUTO_INCREMENT,
+    department VARCHAR(50) NOT NULL,
+    year_level VARCHAR(20) NOT NULL,
+    semester VARCHAR(20) NOT NULL,
+    subject_code VARCHAR(20) NOT NULL,
+    subject_name VARCHAR(100) NOT NULL,
+    units INT NOT NULL,
+    midterm FLOAT DEFAULT NULL,
+    final FLOAT DEFAULT NULL,
+    remarks VARCHAR(100) DEFAULT NULL
+);
+
+
+CREATE TABLE student_grades (
+    grade_id INT PRIMARY KEY AUTO_INCREMENT,
+    student_id INT NOT NULL,
+    subject_id INT NOT NULL,
+    midterm FLOAT DEFAULT NULL,
+    final FLOAT DEFAULT NULL,
+    remarks VARCHAR(100) DEFAULT NULL,
+    FOREIGN KEY (student_id) REFERENCES users(id),
+    FOREIGN KEY (subject_id) REFERENCES subjects(subject_id)
+);
+
+
+
 
 
 

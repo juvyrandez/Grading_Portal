@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { FiUser, FiBook, FiBell, FiSettings, FiLogOut, FiMenu, FiHome } from "react-icons/fi";
+import { FaUserGraduate, FaUserTie, FaBookOpen } from "react-icons/fa";
 import "@fontsource/poppins";
+import Swal from "sweetalert2";
+import { FaUserCircle } from "react-icons/fa";
+import { FaCamera } from "react-icons/fa";
 
 export default function UserDashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
@@ -18,9 +22,28 @@ export default function UserDashboard() {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("user");
-    router.push("/");
-  };
+      Swal.fire({
+        title: "Are you sure?",
+        text: "You will be logged out!",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#d33",
+        cancelButtonColor: "#3085d6",
+        confirmButtonText: "Yes, logout!",
+      }).then((result) => {
+        if (result.isConfirmed) {
+          localStorage.removeItem("user");
+          Swal.fire({
+            icon: "success",
+            title: "Logged out!",
+            text: "You've been successfully logged out.",
+            showConfirmButton: false,
+            timer: 2000,
+          });
+          router.push("/");
+        }
+      });
+    };
 
   return (
     <div className="flex min-h-screen h-[100vh] font-poppins bg-gray-100 overflow-hidden">
@@ -38,7 +61,6 @@ export default function UserDashboard() {
         <ul className="font-poppins mt-6 space-y-3">
           <SidebarItem icon={FiUser} label="Dashboard" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
           <SidebarItem icon={FiBook} label="Grades" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
-          <SidebarItem icon={FiBell} label="Schedule" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
           <SidebarItem icon={FiSettings} label="Help" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
 
           {/* Back to Home Button */}
@@ -64,17 +86,14 @@ export default function UserDashboard() {
       </button>
 
       {/* Profile Dropdown */}
-      <div className="relative">
-        <button className="flex items-center gap-3" onClick={() => setDropdownOpen(!dropdownOpen)}>
-          <span className="font-semibold">{user ? user.username : "User"}</span>
-          <img src="/images/naz.jpg" alt="User" className="w-10 h-10 rounded-full border" />
-        </button>
+<div className="relative">
+  <button className="flex items-center gap-3" onClick={() => setDropdownOpen(!dropdownOpen)}>
+    <span className="font-semibold">{user ? user.username : "User"}</span>
+    <FaUserCircle className="w-10 h-10 text-gray-500 " />
+  </button>
 
         {dropdownOpen && (
           <div className="absolute right-0 mt-2 w-40 bg-white shadow-md rounded-lg p-2">
-            <button onClick={() => setActiveTab("Profile")} className="w-full text-left px-4 py-2 hover:bg-gray-200 rounded-md flex items-center gap-2">
-              <FiUser /> Profile
-            </button>
             <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-red-500 hover:bg-gray-200 rounded-md flex items-center gap-2">
               <FiLogOut /> Logout
             </button>
@@ -86,13 +105,11 @@ export default function UserDashboard() {
 
   {/* Content Area - Render based on activeTab */}
   <div className="font-poppins">
-    {activeTab === "Dashboard" && <Profile />}
-    {activeTab === "Grades" && user && <Grades studentId={user.id} />}
-    {activeTab === "Schedule" && <Schedule />}
-    {activeTab === "Help" && <Help />}
-  </div>
+  {activeTab === "Dashboard" && <Profile studentId={user?.id} />}
+  {activeTab === "Grades" && user && <Grades studentId={user.id} />}
+  {activeTab === "Help" && <Help />}
+</div>
 </main>
-
     </div>
   );
 }
@@ -113,52 +130,175 @@ function SidebarItem({ icon: Icon, label, activeTab, setActiveTab, isSidebarOpen
 }
 
 /* Content Components */
-function Profile() {
+function Profile({ studentId }) {
+  const [student, setStudent] = useState(null);
+  const [newImage, setNewImage] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Fetch student data immediately
+  useEffect(() => {
+    const fetchStudentProfile = async () => {
+      try {
+        const res = await fetch(`/api/getStudentProfile?studentId=${studentId}`);
+        const data = await res.json();
+        if (res.ok) setStudent(data);
+        else console.error("Failed to fetch student profile:", data.error);
+      } catch (err) {
+        console.error("Error fetching student profile:", err);
+      }
+    };
+
+    fetchStudentProfile();
+  }, [studentId]);
+
+  // Handle image selection
+  const handleImageChange = (e) => setNewImage(e.target.files[0]);
+
+  // Handle image upload
+const handleUpload = async () => {
+  if (!newImage)
+    return Swal.fire({
+      icon: "warning",
+      title: "Oops...",
+      text: "Please select an image first!",
+    });
+
+  const formData = new FormData();
+  formData.append("image", newImage);
+  formData.append("studentId", studentId);
+
+  try {
+    const res = await fetch("/api/uploadProfileImage", {
+      method: "POST",
+      body: formData,
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      setStudent((prev) => ({ ...prev, profile_img: data.profile_img }));
+
+      Swal.fire({
+        icon: "success",
+        title: "Profile Updated!",
+        text: "Your profile picture has been updated successfully.",
+        showConfirmButton: false,
+        timer: 1500,
+      });
+
+      setIsEditing(false);
+    } else {
+      Swal.fire({
+        icon: "error",
+        title: "Upload Failed",
+        text: data.error || "Something went wrong. Please try again.",
+      });
+    }
+  } catch (err) {
+    console.error("Error uploading profile image:", err);
+
+    Swal.fire({
+      icon: "error",
+      title: "Error",
+      text: "Failed to upload the image. Please check your connection and try again.",
+    });
+  }
+};
+
+  if (!student) return <p>Loading...</p>;
+
   return (
-    <div className="p-6">
+    <div className="p-1 sm:p-2">
+      <div className="h-6 sm:h-10"></div>
+  
       {/* Profile Header */}
-      <div className="bg-blue-100 p-4 rounded-lg shadow-md flex items-center gap-4">
-        <img
-          src="/images/naz.jpg" // Replace with actual profile image source
-          alt="Profile"
-          className="w-24 h-24 rounded-full border-2 border-blue-500"
-        />
-        <div>
-          <h2 className="text-xl font-semibold">Tactless God of Dota2</h2>
-          <p className="text-gray-600">Bachelor of Science in IT - 3rd Year</p>
-          <p className="text-gray-500">naz@email.com</p>
-        </div>
-      </div>
+<div className="mt-4 sm:mt-6 bg-white p-4 rounded-lg shadow-md flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
+  <div className="relative">
+    {student.profile_img ? (
+      <img
+        src={`/uploads/${student.profile_img}`}
+        alt="Profile"
+        className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 border-blue-500"
+      />
+    ) : (
+      <FaUserCircle className="w-20 h-20 sm:w-24 sm:h-24 text-gray-500" />
+    )}
 
+    {/* Camera Icon to Trigger Edit Mode */}
+    <button
+      onClick={() => setIsEditing(!isEditing)}
+      className="absolute bottom-1 right-1 bg-blue-500 p-2 rounded-full text-white hover:bg-blue-600 transition"
+    >
+      <FaCamera />
+    </button>
+  </div>
+
+  <div>
+    <h2 className="text-lg sm:text-xl font-semibold">{student.fullname}</h2>
+    <p className="text-gray-600">{`${student.course} - ${student.year_level} Year`}</p>
+    <p className="text-gray-500">{student.email}</p>
+  </div>
+</div>
+
+  
+      {/* Change Profile Image Section (Hidden Initially) */}
+      {isEditing && (
+        <div className="mt-4 bg-white p-4 rounded-lg shadow-md">
+          <input type="file" accept="image/*" onChange={handleImageChange} className="mb-2 w-full" />
+          <button
+            onClick={handleUpload}
+            className="bg-blue-500 text-white px-4 py-2 w-full sm:w-auto rounded-md hover:bg-blue-600 transition"
+          >
+            Upload New Profile Picture
+          </button>
+        </div>
+      )}
+  
       {/* Student Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-        <div className="bg-white p-4 rounded-lg shadow-md text-center">
-          <h3 className="text-lg font-semibold">GPA</h3>
-          <p className="text-blue-500 text-2xl font-bold">3.8</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow-md text-center">
-          <h3 className="text-lg font-semibold">Completed Subjects</h3>
-          <p className="text-blue-500 text-2xl font-bold">32</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow-md text-center">
-          <h3 className="text-lg font-semibold">Ongoing Subjects</h3>
-          <p className="text-blue-500 text-2xl font-bold">5</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow-md text-center">
-          <h3 className="text-lg font-semibold">Attendance</h3>
-          <p className="text-blue-500 text-2xl font-bold">98%</p>
-        </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mt-6">
+        {[
+          { label: "Gender", value: student.gender },
+          { label: "Contact", value: student.contact_number || "N/A" },
+          { label: "Birthdate", value: new Date(student.birthdate).toLocaleDateString() },
+          {
+            label: "Status",
+            value: student.status,
+            style: student.status === "Active" ? "text-green-500" : "text-red-500",
+          },
+        ].map((item, index) => (
+          <div key={index} className="bg-white p-3 sm:p-4 rounded-lg shadow-md text-center">
+            <h3 className="text-sm sm:text-lg font-semibold">{item.label}</h3>
+            <p className={`text-blue-500 text-base sm:text-2xl font-bold ${item.style || ""}`}>{item.value}</p>
+          </div>
+        ))}
       </div>
-
-      {/* Recent Activities */}
-      <div className="mt-6 bg-white p-4 rounded-lg shadow-md">
-        <h3 className="text-lg font-semibold mb-2">Recent Activities</h3>
-        <ul className="space-y-2 text-gray-600">
-          <li>✔️ Submitted assignment for "Web Development" on Feb 12</li>
-          <li>📅 Attended "Database Management" lecture on Feb 14</li>
-          <li>📝 Scored 92% in "Software Engineering" midterm exam</li>
-          <li>🔔 Reminder: Final project submission due on March 1</li>
-        </ul>
+  
+      {/* Address */}
+      <div className="mt-4 sm:mt-6 bg-white p-4 rounded-lg shadow-md">
+        <h3 className="text-lg font-semibold mb-2">Address</h3>
+        <p className="text-gray-600">{student.address || "No address provided"}</p>
+      </div>
+  
+      {/* Daily Inspiration */}
+      <div className="mt-4 sm:mt-6 bg-blue-50 p-4 rounded-lg shadow-md">
+        <h2 className="text-lg sm:text-xl font-semibold mb-1">Daily Inspiration</h2>
+  
+        {/* Decorative Line */}
+        <div className="w-full h-1 bg-blue-200 mb-4"></div>
+  
+        {/* Inspirational Quotes */}
+        {[
+          { quote: "Commit to the Lord whatever you do, and He will establish your plans.", verse: "Proverbs 16:3" },
+          { quote: "The fear of the Lord is the beginning of knowledge, but fools despise wisdom and instruction.", verse: "Proverbs 1:7" },
+          { quote: "I can do all things through Christ who strengthens me.", verse: "Philippians 4:13" },
+          { quote: "Let the wise listen and add to their learning, and let the discerning get guidance.", verse: "Proverbs 1:5" },
+          { quote: "Whatever you do, work at it with all your heart, as working for the Lord, not for human masters.", verse: "Colossians 3:23" },
+        ].map((item, index) => (
+          <p key={index} className="italic text-gray-600 mb-4 text-sm sm:text-base">
+            "{item.quote}"
+            <span className="block text-right text-xs sm:text-sm">— {item.verse}</span>
+          </p>
+        ))}
       </div>
     </div>
   );
@@ -166,142 +306,138 @@ function Profile() {
 
 
 function Grades({ studentId }) {
-  const [grades, setGrades] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [selectedSemester, setSelectedSemester] = useState("1st Sem");
+  const [subjects, setSubjects] = useState([]);
+  const [semester, setSemester] = useState("1st Semester");
 
-  // Fetch grades when studentId or selectedSemester changes
   useEffect(() => {
-    const fetchGrades = async () => {
-      setLoading(true);
-      setError(null);
-
+    const fetchSubjects = async () => {
       try {
-        const response = await fetch(
-          `/api/getGrades?studentId=${studentId}&semester=${selectedSemester}`
+        const res = await fetch(
+          `/api/gettingSubjects?studentId=${studentId}&semester=${semester}`
         );
-        if (!response.ok) throw new Error("Failed to fetch grades");
+        const data = await res.json();
 
-        const data = await response.json();
-
-        const updatedGrades = data.grades.map((grade) => ({
-          ...grade,
-          remarks:
-            grade.final_grade === null || grade.final_grade > 3.0
-              ? "Failed"
-              : "Passed",
-        }));
-
-        setGrades(updatedGrades);
+        if (res.ok) {
+          const updatedSubjects = data.map((subject) => ({
+            ...subject,
+            midterm: subject.midterm ?? "Pending",
+            final: subject.final ?? "Pending",
+            remarks:
+              subject.remarks ?? 
+              (subject.midterm === "Pending" || subject.final === "Pending"
+                ? "Pending"
+                : subject.midterm <= 3.0 && subject.final <= 3.0
+                ? "Passed"
+                : "Failed"),
+          }));
+          setSubjects(updatedSubjects);
+        }
       } catch (err) {
-        console.error("Error fetching grades:", err);
-        setError("Failed to load grades.");
-      } finally {
-        setLoading(false);
+        console.error("Failed to fetch subjects:", err);
       }
     };
 
-    fetchGrades();
-  }, [studentId, selectedSemester]);
+    fetchSubjects();
+  }, [studentId, semester]);
 
-  // Export grades to CSV file
-  const handleExport = () => {
-    const csvRows = [
-      ["Subject Code", "Descriptive Title", "Units", "Midterm", "Final", "Remarks"],
-      ...grades.map((grade) => [
-        grade.subject_code,
-        grade.subject_description,
-        grade.units,
-        grade.midterm_grade || "N/A",
-        grade.final_grade || "N/A",
-        grade.remarks,
+  // Export to CSV function
+  const exportToCSV = () => {
+    const csvContent = [
+      ["Subject Code", "Subject Name", "Units", "Midterm", "Final", "Remarks"],
+      ...subjects.map((subject) => [
+        subject.subject_code,
+        subject.subject_name,
+        subject.units,
+        subject.midterm,
+        subject.final,
+        subject.remarks,
       ]),
-    ];
+    ]
+      .map((row) => row.join(","))
+      .join("\n");
 
-    const csvContent = "data:text/csv;charset=utf-8," + csvRows.map((row) => row.join(",")).join("\n");
-    const encodedUri = encodeURI(csvContent);
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Grades_${selectedSemester}.csv`);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Grades_${semester}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  if (loading) return <p className="text-gray-500">Loading grades...</p>;
-  if (error) return <p className="text-red-500">{error}</p>;
+  // Color for Remarks Text
+  const getRemarksStyle = (remarks) => {
+    if (remarks === "Passed") return "text-green-600 font-semibold";
+    if (remarks === "Failed") return "text-red-600 font-semibold";
+    return "text-yellow-600 font-semibold"; // "Pending"
+  };
 
   return (
-    <div className="p-4 bg-white shadow-md rounded-lg mt-8">
-      {/* Header and Semester Dropdown */}
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="font-bold text-lg">Grades - {selectedSemester}</h2>
-        <div className="flex gap-3">
-          <select
-            value={selectedSemester}
-            onChange={(e) => setSelectedSemester(e.target.value)}
-            className="p-2 border rounded-md"
-          >
-            <option value="1st Sem">1st Sem</option>
-            <option value="2nd Sem">2nd Sem</option>
-            <option value="Summer">Summer</option>
-          </select>
-          <button
-            onClick={handleExport}
-            className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition"
-          >
-            Export CSV
-          </button>
-        </div>
+    <div className="p-4 sm:p-6 bg-white mt-10 rounded-lg shadow-md">
+      <h2 className="text-xl sm:text-2xl font-bold mb-4 text-center sm:text-left">Your Subjects</h2>
+  
+      {/* Filter & Export Row */}
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-2 sm:gap-4">
+        {/* Semester Filter */}
+        <select
+          value={semester}
+          onChange={(e) => setSemester(e.target.value)}
+          className="p-2 w-full sm:w-auto border rounded-lg shadow-sm text-sm"
+        >
+          {["1st Semester", "2nd Semester", "Summer"].map((sem) => (
+            <option key={sem} value={sem}>
+              {sem}
+            </option>
+          ))}
+        </select>
+  
+        {/* Export Button (aligned right) */}
+        <button
+          onClick={exportToCSV}
+          className="bg-blue-500 text-white px-3 py-2 rounded-lg shadow-md hover:bg-blue-600 text-sm w-full sm:w-auto"
+        >
+          Export to CSV
+        </button>
       </div>
-
-      {/* Grades Table */}
-      {grades.length > 0 ? (
-        <table className="w-full border-collapse border border-gray-300">
-          <thead className="bg-sky-800 text-white">
-            <tr>
-              <th className="border p-2">Code</th>
-              <th className="border p-2">Descriptive</th>
-              <th className="border p-2">Units</th>
-              <th className="border p-2">Midterm</th>
-              <th className="border p-2">Final</th>
-              <th className="border p-2">Remarks</th>
-            </tr>
-          </thead>
-          <tbody>
-            {grades.map((grade) => (
-              <tr key={grade.id} className="hover:bg-sky-200 transition">
-                <td className="border p-2">{grade.subject_code}</td>
-                <td className="border p-2">{grade.subject_description}</td>
-                <td className="border p-2">{grade.units}</td>
-                <td className="border p-2">{grade.midterm_grade || "N/A"}</td>
-                <td className="border p-2">{grade.final_grade || "N/A"}</td>
-                <td
-                  className={`border p-2 font-semibold ${
-                    grade.remarks === "Passed" ? "text-green-600" : "text-red-600"
-                  }`}
-                >
-                  {grade.remarks}
-                </td>
+  
+      {/* Subjects Table */}
+      {subjects.length > 0 ? (
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse border border-gray-300 shadow-md text-sm">
+            <thead>
+              <tr className="bg-gray-200 text-xs sm:text-sm">
+                <th className="border p-2 sm:p-3">Code</th>
+                <th className="border p-2 sm:p-3">Subject Name</th>
+                <th className="border p-2 sm:p-3">Units</th>
+                <th className="border p-2 sm:p-3">Midterm</th>
+                <th className="border p-2 sm:p-3">Final</th>
+                <th className="border p-2 sm:p-3">Remarks</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {subjects.map((subject) => (
+                <tr key={subject.subject_id} className="text-center text-xs sm:text-sm">
+                  <td className="border p-2 sm:p-3">{subject.subject_code}</td>
+                  <td className="border p-2 sm:p-3">{subject.subject_name}</td>
+                  <td className="border p-2 sm:p-3">{subject.units}</td>
+                  <td className="border p-2 sm:p-3">{subject.midterm}</td>
+                  <td className="border p-2 sm:p-3">{subject.final}</td>
+                  <td className={`border p-2 sm:p-3 ${getRemarksStyle(subject.remarks)}`}>
+                    {subject.remarks}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : (
-        <p className="text-gray-500">No grades recorded for this semester.</p>
+        <p className="text-gray-500 text-center mt-4">No subjects found for your department and year level.</p>
       )}
     </div>
   );
 }
-
-
-
-function Schedule() {
-  return <div>Announcements Content</div>;
-}
-
-
 
 
 function Help() {

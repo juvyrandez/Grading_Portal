@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import { FiUsers, FiClipboard, FiMenu, FiBell, FiUser, FiLogOut, FiChevronDown, FiChevronUp } from "react-icons/fi";
+import { FiUsers, FiClipboard, FiMenu, FiBell, FiUser, FiLogOut, FiChevronDown, FiChevronUp,FiEdit } from "react-icons/fi";
 import "@fontsource/poppins";
+import Swal from "sweetalert2";
+import { FaUserGraduate } from "react-icons/fa";
+import { FaEye } from "react-icons/fa";
+import { FaGraduationCap } from "react-icons/fa";
 
 export default function ProgramHeadDashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
@@ -25,37 +29,65 @@ export default function ProgramHeadDashboard() {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("user");
-    router.push("/login_form");
-  };
+      Swal.fire({
+        title: "Are you sure?",
+        text: "You will be logged out!",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#d33",
+        cancelButtonColor: "#3085d6",
+        confirmButtonText: "Yes, logout!",
+      }).then((result) => {
+        if (result.isConfirmed) {
+          localStorage.removeItem("user");
+          Swal.fire({
+            icon: "success",
+            title: "Logged out!",
+            text: "You've been successfully logged out.",
+            showConfirmButton: false,
+            timer: 2000,
+          });
+    
+          router.push("/login_form");
+        }
+      });
+    };
 
   return (
     <div className="flex min-h-screen h-[100vh] font-poppins bg-gray-100 overflow-hidden">
       {/* Sidebar */}
       <aside
-        className={`bg-gradient-to-b from-sky-700 to-blue-950 text-white transition-all 
-        ${isSidebarOpen ? "w-64 p-5" : "w-20 p-3"} min-h-screen fixed md:relative`}
-      >
-        <div className="flex items-center justify-between">
-          {isSidebarOpen && <h1 className="text-lg font-bold">HED Program Head</h1>}
-          <button className="text-white p-2" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-            <FiMenu size={28} />
-          </button>
-        </div>
+  className={`bg-gradient-to-b from-sky-700 to-blue-950 text-white transition-all 
+  ${isSidebarOpen ? "w-64 p-5" : "w-20 p-3"} min-h-screen fixed md:relative`}
+>
+  <div className="flex items-center justify-between">
+  {isSidebarOpen && <img src="/images/logo2.png" alt="Logo" className="h-20 w-auto" />}
+    <button className="text-white p-2" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+      <FiMenu size={28} />
+    </button>
+  </div>
 
-        <ul className="mt-6 space-y-3">
-          <SidebarItem icon={FiClipboard} label="Dashboard" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
-          <SidebarItem
-            icon={FiUsers}
-            label="Program Students"
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            isSidebarOpen={isSidebarOpen}
-            hasDropdown
-            dropdownItems={["1st Year", "2nd Year", "3rd Year", "4th Year"]}
-          />
-        </ul>
-      </aside>
+  <ul className="mt-6 space-y-3">
+    <SidebarItem icon={FiClipboard} label="Dashboard" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
+    <SidebarItem
+      icon={FiUsers}
+      label="Program Students"
+      activeTab={activeTab}
+      setActiveTab={setActiveTab}
+      isSidebarOpen={isSidebarOpen}
+      hasDropdown
+      dropdownItems={["1st Year", "2nd Year", "3rd Year", "4th Year"]}
+    />
+    <SidebarItem
+      icon={FiEdit}
+      label="Add Grades"
+      activeTab={activeTab}
+      setActiveTab={setActiveTab}
+      isSidebarOpen={isSidebarOpen}
+    />
+  </ul>
+</aside>
+
 
       {/* Main Content */}
       <main className="font-poppins text-black flex-1 p-6 bg-gray-100 overflow-auto ml-[5rem] md:ml-0">
@@ -69,21 +101,17 @@ export default function ProgramHeadDashboard() {
             </button>
 
             {/* Profile Dropdown */}
-            <div className="relative">
-              <button className="flex items-center gap-2" onClick={() => setDropdownOpen(!dropdownOpen)}>
-                <span className="font-semibold">
-                  {programHead ? programHead.username || programHead.name : "Program Head"}
-                </span>
-                <img src="/images/youtube.png" alt="Program Head" className="w-10 h-10 rounded-full border" />
-              </button>
+<div className="relative">
+  <button className="flex items-center gap-2" onClick={() => setDropdownOpen(!dropdownOpen)}>
+    <span className="font-semibold">
+      {programHead ? programHead.username || programHead.name : "Program Head"}
+    </span>
+    <FaUserGraduate className="w-10 h-10 p-2 text-blue-500 border-2 border-blue-500 rounded-full" />
+  </button>
 
               {dropdownOpen && (
                 <div className="absolute right-0 mt-2 w-40 bg-white shadow-lg rounded-lg">
                   <ul className="py-2">
-                    <li className="flex items-center gap-2 px-4 py-2 hover:bg-gray-200 cursor-pointer">
-                      <FiUser />
-                      <span>Profile</span>
-                    </li>
                     <li
                       onClick={handleLogout}
                       className="flex items-center gap-2 px-4 py-2 text-red-500 hover:bg-gray-200 cursor-pointer"
@@ -102,6 +130,7 @@ export default function ProgramHeadDashboard() {
         <div className="font-poppins">
           {activeTab === "Dashboard" && <Dashboard />}
           {activeTab.includes("Program Students") && <ProgramStudents year={activeTab.split(" - ")[1]} />}
+          {activeTab === "Add Grades" && <AddGrades />} {/* New Add Grades component */}
         </div>
       </main>
     </div>
@@ -151,27 +180,226 @@ function SidebarItem({ icon: Icon, label, activeTab, setActiveTab, isSidebarOpen
 
 // Components for different tabs
 function Dashboard() {
-  return <div>Dashboard Overview</div>;
+  return (
+    <div className="p-4 bg-white rounded shadow-md">
+      {/* Welcome Header */}
+      <h1 className="text-2xl font-bold mb-2">Welcome, Program Head</h1>
+      <p className="text-gray-700 mb-4">Guide and empower your students today.</p>
+
+      {/* Daily Inspiration */}
+      <div className="p-2 border rounded shadow-sm mb-2">
+        <h2 className="text-xl font-semibold mb-1">Daily Inspiration</h2>
+        <p className="italic text-gray-600">
+          "Commit to the Lord whatever you do, and He will establish your plans."  
+          <span className="block text-right text-sm">— Proverbs 16:3</span>
+        </p>
+      </div>
+    </div>
+  );
 }
+
+function AddGrades() {
+  const [programHead, setProgramHead] = useState(null);
+  const [yearLevel, setYearLevel] = useState("");
+  const [semester, setSemester] = useState("");
+  const [subjects, setSubjects] = useState([]);
+  const [selectedSubject, setSelectedSubject] = useState("");
+  const [students, setStudents] = useState([]);
+  const [grades, setGrades] = useState({});
+  const [loading, setLoading] = useState(false);
+
+  // Load logged-in Program Head data
+  useEffect(() => {
+    const storedUser = JSON.parse(localStorage.getItem("user"));
+    if (storedUser?.user_type === "programhead") setProgramHead(storedUser);
+  }, []);
+
+  // Fetch subjects based on Program Head's department, year level, and semester
+  useEffect(() => {
+    if (programHead && yearLevel && semester) {
+      fetch(`/api/getSubjects?department=${programHead.department}&yearLevel=${yearLevel}&semester=${semester}`)
+        .then((res) => res.json())
+        .then(setSubjects)
+        .catch((err) => console.error("Error fetching subjects:", err));
+    }
+  }, [programHead, yearLevel, semester]);
+
+  // Fetch students after selecting a subject
+  useEffect(() => {
+    if (programHead && selectedSubject) {
+      fetch(`/api/filterStudents?department=${programHead.department}&yearLevel=${yearLevel}`)
+        .then((res) => res.json())
+        .then((data) => {
+          setStudents(data);
+
+          // Initialize grades for each student
+          const initialGrades = data.reduce((acc, student) => {
+            acc[student.id] = { midterm: "", final: "" };
+            return acc;
+          }, {});
+          setGrades(initialGrades);
+        })
+        .catch((err) => console.error("Error fetching students:", err));
+    }
+  }, [programHead, selectedSubject]);
+
+  // Handle grade input per student
+  const handleGradeChange = (studentId, field, value) => {
+    setGrades({
+      ...grades,
+      [studentId]: { ...grades[studentId], [field]: value },
+    });
+  };
+
+  // Submit grades to database
+  const handleSubmitGrades = async () => {
+    const filteredGrades = Object.entries(grades).reduce((acc, [studentId, grade]) => {
+      if (grade.midterm !== "" || grade.final !== "") acc[studentId] = grade; // Only keep filled grades
+      return acc;
+    }, {});
+
+    if (Object.keys(filteredGrades).length === 0) {
+      Swal.fire("No grades entered!", "Please input grades before submitting.", "warning");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/addGrades", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: subjects.find((sub) => sub.subject_code === selectedSubject),
+          semester,
+          grades: filteredGrades,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        Swal.fire("Success!", data.message || "Grades submitted successfully!", "success");
+        setGrades({});
+      } else {
+        Swal.fire("Error!", data.message || "Failed to submit grades.", "error");
+      }
+    } catch (err) {
+      console.error("Error submitting grades:", err);
+      Swal.fire("Error!", "Failed to submit grades.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 p-4 bg-white rounded shadow">
+    <h2 className="text-lg font-bold mb-6">Add Grades by Subject</h2>
+
+    {/* Show Department automatically */}
+    <div className="mb-6">
+      <label className="block font-semibold mb-2">Department:</label>
+      <div className="flex items-center gap-4 p-3 border rounded w-full bg-gray-100">
+        <FaGraduationCap className="text-blue-500 text-3xl" /> {/* Larger icon */}
+        <input
+          type="text"
+          value={programHead?.department || "Loading..."}
+          disabled
+          className="bg-gray-100 w-full outline-none"
+        />
+      </div>
+    </div>
+
+    
+      {/* Year Level and Semester Select */}
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <select value={yearLevel} onChange={(e) => setYearLevel(e.target.value)} className="p-2 border rounded">
+          <option value="">Select Year Level</option>
+          {["1st Year", "2nd Year", "3rd Year", "4th Year"].map((year) => (
+            <option key={year} value={year}>
+              {year}
+            </option>
+          ))}
+        </select>
+
+        <select value={semester} onChange={(e) => setSemester(e.target.value)} className="p-2 border rounded">
+          <option value="">Select Semester</option>
+          {["1st Semester", "2nd Semester", "Summer"].map((sem) => (
+            <option key={sem} value={sem}>
+              {sem}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Subject Select */}
+      {subjects.length > 0 && (
+        <select value={selectedSubject} onChange={(e) => setSelectedSubject(e.target.value)} className="p-2 border rounded mb-4">
+          <option value="">Select Subject</option>
+          {subjects.map((subject) => (
+            <option key={subject.subject_id} value={subject.subject_code}>
+              {subject.subject_name} ({subject.subject_code})
+            </option>
+          ))}
+        </select>
+      )}
+
+      {/* Student Grades Input Table */}
+      {students.length > 0 && selectedSubject && (
+        <div>
+          <h3 className="text-md font-semibold mb-2">Enter Grades:</h3>
+          <table className="w-full table-auto border-collapse border border-gray-200">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border p-2">Student Name</th>
+                <th className="border p-2">Midterm</th>
+                <th className="border p-2">Final</th>
+              </tr>
+            </thead>
+            <tbody>
+              {students.map((student) => (
+                <tr key={student.id}>
+                  <td className="border p-2">{student.fullname}</td>
+                  <td className="border p-2">
+                    <input
+                      type="number"
+                      value={grades[student.id]?.midterm || ""}
+                      onChange={(e) => handleGradeChange(student.id, "midterm", e.target.value)}
+                      className="p-2 border rounded w-full"
+                    />
+                  </td>
+                  <td className="border p-2">
+                    <input
+                      type="number"
+                      value={grades[student.id]?.final || ""}
+                      onChange={(e) => handleGradeChange(student.id, "final", e.target.value)}
+                      className="p-2 border rounded w-full"
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <button
+            onClick={handleSubmitGrades}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mt-4"
+            disabled={loading}
+          >
+            {loading ? "Saving..." : "Save Grades"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 
 function ProgramStudents({ year }) {
   const [students, setStudents] = useState([]);
   const [programHead, setProgramHead] = useState(null);
-  const [selectedStudent, setSelectedStudent] = useState(null);
-  const [showGradeModal, setShowGradeModal] = useState(false);
   const [viewedStudent, setViewedStudent] = useState(null);
-  const [showUpdateModal, setShowUpdateModal] = useState(false);
-  const [selectedSemester, setSelectedSemester] = useState("1st Sem");
-  const [allGrades, setAllGrades] = useState([]);
-  const [gradeData, setGradeData] = useState({
-    subjectCode: "",
-    description: "",
-    units: "",
-    midterm: "",
-    final: "",
-    remarks: "",
-    semester: "1st Sem", // Default semester
-  });
   
 
   // Load user data on mount
@@ -201,146 +429,11 @@ const handleView = (student) => setViewedStudent(student);
 const closeViewModal = () => setViewedStudent(null);
 
 
-  // 🗑️ Delete student
-  const handleDelete = async (studentId) => {
-    const confirmDelete = confirm("Are you sure you want to delete this student?");
-    if (!confirmDelete) return;
-
-    try {
-      const response = await fetch(`/api/removeStudent?id=${studentId}`, { method: "DELETE" });
-      const data = await response.json();
-
-      if (response.ok) {
-        alert("Student removed successfully!");
-        setStudents((prev) => prev.filter((s) => s.id !== studentId));
-      } else {
-        alert(data.error || "Failed to remove student.");
-      }
-    } catch (error) {
-      console.error("Error removing student:", error);
-      alert("Failed to remove student.");
-    }
-  };
-
-  // ✏️ Open the grade modal
-const handleAddGrade = (student) => {
-  setSelectedStudent(student);
-  setShowGradeModal(true);
-  setGradeData({
-    subjectCode: "",
-    description: "",
-    units: "",
-    midterm: "",
-    final: "",
-    remarks: "",
-    semester: "1st Sem",
-  });
-};
-
-// 📌 Handle grade submission
-const submitGrade = async () => {
-  const { subjectCode, description, units, midterm, final, remarks, semester } = gradeData;
-
-  if (!subjectCode || !description || !units || !semester) {
-    alert("Please fill in the subject details, units, and semester.");
-    return;
-  }
-
-  try {
-    const response = await fetch("/api/addGrade", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        studentId: selectedStudent.id,
-        subjectCode,
-        description,
-        units,
-        midterm: midterm || null, // Allow empty midterm
-        final: final || null, // Allow empty final
-        remarks: remarks || "Pending",
-        semester,
-      }),
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      alert(`Grade added successfully for ${selectedStudent.fullname}!`);
-      setShowGradeModal(false);
-      setGradeData({
-        subjectCode: "",
-        description: "",
-        units: "",
-        midterm: "",
-        final: "",
-        remarks: "",
-        semester: "1st Sem",
-      });
-    } else {
-      alert(data.error || "Failed to add grade.");
-    }
-  } catch (error) {
-    console.error("Error adding grade:", error);
-    alert("Failed to add grade.");
-  }
-};
-
-const handleUpdateGrades = async (student) => {
-  setSelectedStudent(student);
-  try {
-    const response = await fetch(`/api/getAllGrades?studentId=${student.id}`);
-    const data = await response.json();
-    setAllGrades(data.grades);
-    setShowUpdateModal(true);
-  } catch (error) {
-    console.error("Error loading grades:", error);
-    alert("Failed to load grades.");
-  }
-};
-
-const handleGradeChange = (index, field, value) => {
-  const updatedGrades = [...allGrades];
-  updatedGrades[index][field] = value;
-  updatedGrades[index].remarks = calculateRemarks(
-    updatedGrades[index].midterm_grade,
-    updatedGrades[index].final_grade
-  );
-  setAllGrades(updatedGrades);
-};
-
-const calculateRemarks = (midterm, final) => {
-  const average = (parseFloat(midterm) + parseFloat(final)) / 2;
-  if (isNaN(average)) return "Incomplete";
-  return average <= 3.0 ? "Passed" : "Failed";
-};
-
-const submitUpdatedGrades = async () => {
-  try {
-    const response = await fetch("/api/updateGrades", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ studentId: selectedStudent.id, grades: allGrades }),
-    });
-
-    const data = await response.json();
-    if (response.ok) {
-      alert("Grades updated successfully!");
-      setShowUpdateModal(false);
-    } else {
-      alert(data.error || "Failed to update grades.");
-    }
-  } catch (error) {
-    console.error("Error updating grades:", error);
-    alert("Failed to update grades.");
-  }
-};
-
-
 return (
   <div>
-    <h3 className="font-bold mb-4">
-      Students in {programHead?.department || "your department"}
-    </h3>
+  <h3 className="font-bold mt-4 p-2 bg-white rounded shadow">
+    Students in {programHead?.department || "your department"}
+  </h3>
 
     {students.length > 0 ? (
       <table className="w-full border-collapse border border-gray-300 mt-4">
@@ -363,31 +456,13 @@ return (
               <td className="border p-2">{student.course}</td>
               <td className="border p-2">{student.status}</td>
               <td className="border p-2 flex gap-2 justify-center">
-                <button
-                  className="bg-green-500 hover:bg-green-600 text-white py-1 px-3 rounded text-sm"
-                  onClick={() => handleView(student)}
-                >
-                  View
-                </button>
-                <button
-                  className="bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded text-sm"
-                  onClick={() => handleDelete(student.id)}
-                >
-                  Delete
-                </button>
-                <button
-                  className="bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded text-sm"
-                  onClick={() => handleAddGrade(student)}
-                >
-                  Add Grade
-                </button>
-                <button
-                  className="bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded text-sm"
-                  onClick={() => handleUpdateGrades(student)}
-                >
-                  Update Grades
-                </button>
-              </td>
+  <button
+    className="text-blue-500 hover:text-green-600"
+    onClick={() => handleView(student)}
+  >
+    <FaEye className="w-5 h-5" />
+  </button>
+</td>
             </tr>
           ))}
         </tbody>
@@ -396,151 +471,6 @@ return (
       <p className="text-gray-500">No students found for this year level.</p>
     )}
 
-
-
-{showUpdateModal && selectedStudent && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-    <div className="bg-white p-6 rounded shadow-lg w-[80%] max-w-4xl">
-      <h2 className="text-lg font-bold mb-4 text-center">
-        Update Grades for {selectedStudent.fullname}
-      </h2>
-
-      {/* Dropdown for Semester Selection */}
-      <div className="mb-4 text-center">
-        <label htmlFor="semester" className="mr-2 font-semibold">
-          Select Semester:
-        </label>
-        <select
-          id="semester"
-          className="p-2 border rounded"
-          value={selectedSemester}
-          onChange={(e) => setSelectedSemester(e.target.value)}
-        >
-          <option value="1st Sem">1st Semester</option>
-          <option value="2nd Sem">2nd Semester</option>
-          <option value="Summer">Summer</option>
-        </select>
-      </div>
-
-      {allGrades.length > 0 ? (
-        <div className="grid grid-cols-3 gap-4">
-          {allGrades
-            .filter((grade) => grade.semester === selectedSemester)
-            .map((grade, index) => (
-              <div key={index} className="p-2 border rounded shadow-sm bg-gray-50">
-                <h3 className="font-semibold text-center mb-2">{grade.semester}</h3>
-                <input
-                  type="text"
-                  placeholder="Subject Code"
-                  value={grade.subject_code}
-                  onChange={(e) => handleGradeChange(index, "subject_code", e.target.value)}
-                  className="w-full mb-2 p-2 border rounded"
-                />
-                <input
-                  type="number"
-                  placeholder="Midterm Grade"
-                  value={grade.midterm_grade || ""}
-                  onChange={(e) => handleGradeChange(index, "midterm_grade", e.target.value)}
-                  className="w-full mb-2 p-2 border rounded"
-                />
-                <input
-                  type="number"
-                  placeholder="Final Grade"
-                  value={grade.final_grade || ""}
-                  onChange={(e) => handleGradeChange(index, "final_grade", e.target.value)}
-                  className="w-full mb-2 p-2 border rounded"
-                />
-                <input
-                  type="text"
-                  value={grade.remarks}
-                  readOnly
-                  className="w-full mb-2 p-2 border bg-gray-200 rounded"
-                />
-              </div>
-            ))}
-        </div>
-      ) : (
-        <p className="text-center">No grades available to update.</p>
-      )}
-
-      {/* Buttons */}
-      <div className="flex justify-end mt-4 gap-2">
-        <button
-          className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded"
-          onClick={() => setShowUpdateModal(false)}
-        >
-          Cancel
-        </button>
-        <button
-          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
-          onClick={submitUpdatedGrades}
-        >
-          Save Changes
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-
-
-{showGradeModal && selectedStudent && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-    <div className="bg-white p-6 rounded shadow-lg w-96">
-      <h2 className="text-lg font-bold mb-4">Add Grade for {selectedStudent.fullname}</h2>
-      <select
-        value={gradeData.semester}
-        onChange={(e) => setGradeData({ ...gradeData, semester: e.target.value })}
-        className="w-full mb-2 p-2 border"
-      >
-        <option value="1st Sem">1st Sem</option>
-        <option value="2nd Sem">2nd Sem</option>
-        <option value="Summer">Summer</option>
-      </select>
-      <input
-        type="text"
-        placeholder="Subject Code"
-        value={gradeData.subjectCode}
-        onChange={(e) => setGradeData({ ...gradeData, subjectCode: e.target.value })}
-        className="w-full mb-2 p-2 border"
-      />
-      <input
-        type="text"
-        placeholder="Descriptive Title"
-        value={gradeData.description}
-        onChange={(e) => setGradeData({ ...gradeData, description: e.target.value })}
-        className="w-full mb-2 p-2 border"
-      />
-      <input
-        type="number"
-        placeholder="Units"
-        value={gradeData.units}
-        onChange={(e) => setGradeData({ ...gradeData, units: e.target.value })}
-        className="w-full mb-2 p-2 border"
-      />
-      <input
-        type="text"
-        placeholder="Midterm Grade"
-        value={gradeData.midterm}
-        onChange={(e) => setGradeData({ ...gradeData, midterm: e.target.value })}
-        className="w-full mb-2 p-2 border"
-      />
-      <input
-        type="text"
-        placeholder="Final Grade"
-        value={gradeData.final}
-        onChange={(e) => setGradeData({ ...gradeData, final: e.target.value })}
-        className="w-full mb-4 p-2 border"
-      />
-      <button className="bg-gray-500 text-white px-4 py-2 rounded mr-2" onClick={() => setShowGradeModal(false)}>
-        Cancel
-      </button>
-      <button className="bg-blue-500 text-white px-4 py-2 rounded" onClick={submitGrade}>
-        Add Grade
-      </button>
-    </div>
-  </div>
-)}
 
       {/* 🎉 View Student Modal */}
 {viewedStudent && (
