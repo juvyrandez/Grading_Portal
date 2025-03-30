@@ -1,11 +1,17 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import { FiUsers, FiBook, FiClipboard, FiSettings, FiLogOut, FiMenu, FiBell, FiUser } from "react-icons/fi";
+import {FiLogOut, FiMenu, FiBell} from "react-icons/fi";
+import { MdDashboard } from "react-icons/md";
 import Swal from "sweetalert2";
 import { Bar } from "react-chartjs-2";
 import { FaUserTie } from "react-icons/fa";
 import { FaUserGraduate, FaChalkboardTeacher, FaBookOpen } from "react-icons/fa";
 import { FaEye, FaEdit, FaTrashAlt } from "react-icons/fa";
+import { FaArrowLeft, FaArrowRight } from "react-icons/fa";
+import { FaUserFriends } from "react-icons/fa";
+import { FaBook } from "react-icons/fa";
+import { MdLibraryBooks } from "react-icons/md";
+import { FaHandsHelping } from "react-icons/fa";
 import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from "chart.js";
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
@@ -65,11 +71,11 @@ export default function AdminDashboard() {
         </div>
 
         <ul className="mt-6 space-y-3">
-          <SidebarItem icon={FiClipboard} label="Dashboard" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
-          <SidebarItem icon={FiUsers} label="Students" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
-          <SidebarItem icon={FiBook} label="ProgramHead" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
-          <SidebarItem icon={FiClipboard} label="Subjects" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
-          <SidebarItem icon={FiSettings} label="Help" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
+          <SidebarItem icon={MdDashboard} label="Dashboard" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
+          <SidebarItem icon={FaUserFriends } label="Students" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
+          <SidebarItem icon={FaBook} label="ProgramHead" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
+          <SidebarItem icon={MdLibraryBooks } label="Subjects" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
+          <SidebarItem icon={FaHandsHelping} label="Help" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
         </ul>
       </aside>
 
@@ -242,6 +248,12 @@ const [editFormData, setEditFormData] = useState({});
   const [error, setError] = useState("");
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [filteredStudents, setFilteredStudents] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedYear, setSelectedYear] = useState("");
+  const [selectedCourse, setSelectedCourse] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+const studentsPerPage = 10
   
   const [formData, setFormData] = useState({
     fullname: "",
@@ -355,22 +367,68 @@ const [editFormData, setEditFormData] = useState({});
     });
   };
   
-  
-  
 
-  useEffect(() => {
-    fetchStudents();
-  }, []);
+  // Filter students based on search, year level, and course
+useEffect(() => {
+  let filtered = students;
 
-  const fetchStudents = async () => {
-    try {
-      const res = await fetch("/api/students");
-      const data = await res.json();
-      setStudents(data);
-    } catch (error) {
-      console.error("Error fetching students:", error);
-    }
-  };
+  if (searchQuery) {
+    filtered = filtered.filter(
+      (student) =>
+        student.fullname.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        student.email.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }
+
+  if (selectedYear) {
+    filtered = filtered.filter((student) => student.year_level == selectedYear);
+  }
+
+  if (selectedCourse) {
+    filtered = filtered.filter((student) => student.course === selectedCourse);
+  }
+
+  setFilteredStudents(filtered);
+  setCurrentPage(1); // Reset to first page on filter change
+}, [searchQuery, selectedYear, selectedCourse, students]);
+
+useEffect(() => {
+  fetchStudents();
+}, []);
+
+const fetchStudents = async () => {
+  try {
+    const res = await fetch("/api/students");
+    const data = await res.json();
+    setStudents(data);
+    setFilteredStudents(data);
+  } catch (error) {
+    console.error("Error fetching students:", error);
+  }
+};
+
+
+// Pagination logic
+const indexOfLastStudent = currentPage * studentsPerPage;
+const indexOfFirstStudent = indexOfLastStudent - studentsPerPage;
+const currentStudents = filteredStudents.slice(indexOfFirstStudent, indexOfLastStudent);
+
+const nextPage = () => {
+  if (currentPage < Math.ceil(filteredStudents.length / studentsPerPage)) {
+    setCurrentPage(currentPage + 1);
+  }
+};
+
+const prevPage = () => {
+  if (currentPage > 1) {
+    setCurrentPage(currentPage - 1);
+  }
+};
+
+
+
+
+
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -421,6 +479,20 @@ const [editFormData, setEditFormData] = useState({});
       });
     }
   };
+
+  const handleContactNumberChange = (e) => {
+    const value = e.target.value;
+    if (/^\d{0,11}$/.test(value)) {
+      setFormData({ ...formData, contact_number: value });
+    }
+  };
+
+  const handleEditContactNumberChange = (e) => {
+    const value = e.target.value;
+    if (/^\d{0,11}$/.test(value)) {
+      setEditFormData({ ...editFormData, contact_number: value });
+    }
+  };
   
 
   return (
@@ -429,28 +501,40 @@ const [editFormData, setEditFormData] = useState({});
       <div className="bg-blue-100 p-4 flex justify-between items-center flex-wrap rounded-lg shadow-md">
         <h2 className="text-lg md:text-xl">View Students</h2>
         <div className="flex gap-4 text-sm md:text-base">
-          <select className="bg-white border border-gray-300 p-2 rounded-md text-gray-700 cursor-pointer">
-            <option>1st Year</option>
-            <option>2nd Year</option>
-            <option>3rd Year</option>
-            <option>4th Year</option>
+          <select
+            className="bg-white border border-gray-300 p-2 rounded-md text-gray-700 cursor-pointer"
+            onChange={(e) => setSelectedYear(e.target.value)}
+            value={selectedYear}
+          >
+            <option value="">All Years</option>
+            <option value="1">1st Year</option>
+            <option value="2">2nd Year</option>
+            <option value="3">3rd Year</option>
+            <option value="4">4th Year</option>
           </select>
-          <select className="bg-white border border-gray-300 p-2 rounded-md text-gray-700 cursor-pointer">
-            <option>BSIT</option>
-            <option>CJEP</option>
-            <option>BSBA</option>
-            <option>TEP</option>
-            <option>HM</option>
+          <select
+            className="bg-white border border-gray-300 p-2 rounded-md text-gray-700 cursor-pointer"
+            onChange={(e) => setSelectedCourse(e.target.value)}
+            value={selectedCourse}
+          >
+            <option value="">All Courses</option>
+            <option value="BSIT">BSIT</option>
+            <option value="CJEP">CJEP</option>
+            <option value="BSBA">BSBA</option>
+            <option value="TEP">TEP</option>
+            <option value="HM">HM</option>
           </select>
         </div>
       </div>
-
+  
       {/* Search & Add Button */}
       <div className="flex justify-between items-center mt-4">
         <input
           type="text"
           placeholder="Search for student"
           className="border border-gray-300 p-2 rounded-md w-60"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
         />
         <button
           className="bg-gray-200 px-4 py-2 rounded-md flex items-center gap-2"
@@ -459,14 +543,15 @@ const [editFormData, setEditFormData] = useState({});
           <span>➕</span> Add Student Account
         </button>
       </div>
-
+  
       {error && <p className="text-red-500 mt-2">{error}</p>}
-
-      <table className="w-full border-collapse mt-4">
+  
+      {/* Student Table */}
+<table className="w-full border-collapse mt-4">
   <thead className="bg-gray-200">
     <tr>
-      <th className="p-2 border">Name</th>
-      <th className="p-2 border">Email</th>
+      <th className="p-2 border text-left">Name</th>
+      <th className="p-2 border text-left">Email</th>
       <th className="p-2 border">Course</th>
       <th className="p-2 border">Year Level</th>
       <th className="p-2 border">Status</th>
@@ -474,28 +559,61 @@ const [editFormData, setEditFormData] = useState({});
     </tr>
   </thead>
   <tbody>
-    {students.map((student) => (
-      <tr key={student.id} className="text-center border">
-        <td className="p-2 border">{student.fullname}</td>
-        <td className="p-2 border">{student.email}</td>
-        <td className="p-2 border">{student.course}</td>
-        <td className="p-2 border">{student.year_level}</td>
-        <td className="p-2 border">{student.status}</td>
-        <td className="p-2 border flex justify-center gap-2">
-  <button className="text-blue-500 hover:text-blue-700" onClick={() => handleView(student)}>
-    <FaEye className="w-5 h-5" />
-  </button>
-  <button className=" hover:text-yellow-700" onClick={() => handleEdit(student)}>
-    <FaEdit className="w-5 h-5" />
-  </button>
-  <button className="text-red-500 hover:text-red-700" onClick={() => handleDelete(student.id)}>
-    <FaTrashAlt className="w-5 h-5" />
-  </button>
-</td>
+    {currentStudents.length > 0 ? (
+      currentStudents.map((student) => (
+        <tr key={student.id} className="border">
+          <td className="p-2 border text-left">{student.fullname}</td>
+          <td className="p-2 border text-left">{student.email}</td>
+          <td className="p-2 border text-center">{student.course}</td>
+          <td className="p-2 border text-center">{student.year_level}</td>
+          <td className="p-2 border text-center">{student.status}</td>
+          <td className="p-2 border flex justify-center gap-2">
+            <button className="text-blue-500 hover:text-blue-700" onClick={() => handleView(student)}>
+              <FaEye className="w-5 h-5" />
+            </button>
+            <button className="hover:text-yellow-700" onClick={() => handleEdit(student)}>
+              <FaEdit className="w-5 h-5" />
+            </button>
+            <button className="text-red-500 hover:text-red-700" onClick={() => handleDelete(student.id)}>
+              <FaTrashAlt className="w-5 h-5" />
+            </button>
+          </td>
+        </tr>
+      ))
+    ) : (
+      <tr>
+        <td colSpan="6" className="text-center p-4 text-gray-500">
+          No students found.
+        </td>
       </tr>
-    ))}
+    )}
   </tbody>
 </table>
+  
+      {/* Pagination Controls */}
+<div className="flex justify-end items-center mt-4 gap-2">
+  <button
+    onClick={prevPage}
+    disabled={currentPage === 1}
+    className={`px-3 py-2 rounded-md flex items-center ${
+      currentPage === 1 ? "bg-gray-300 cursor-not-allowed" : "bg-blue-500 text-white"
+    }`}
+  >
+    <FaArrowLeft className="w-5 h-5" />
+  </button>
+  <span className="text-gray-700">
+    Page {currentPage} of {Math.ceil(filteredStudents.length / studentsPerPage)}
+  </span>
+  <button
+    onClick={nextPage}
+    disabled={currentPage === Math.ceil(filteredStudents.length / studentsPerPage)}
+    className={`px-3 py-2 rounded-md flex items-center ${
+      currentPage === Math.ceil(filteredStudents.length / studentsPerPage) ? "bg-gray-300 cursor-not-allowed" : "bg-blue-500 text-white"
+    }`}
+  >
+    <FaArrowRight className="w-5 h-5" />
+  </button>
+</div>
 
 {/* View Student Modal */}
 {isViewModalOpen && selectedStudent && (
@@ -557,7 +675,19 @@ const [editFormData, setEditFormData] = useState({});
         </select>
 
         <input type="date" name="birthdate" value={editFormData.birthdate} className="border p-2 rounded" onChange={handleEditChange} />
-        <input type="text" name="contact_number" value={editFormData.contact_number} className="border p-2 rounded" onChange={handleEditChange} />
+
+        {/* Contact Number Validation */}
+        <input
+          type="text"
+          name="contact_number"
+          value={editFormData.contact_number || ""}
+          className="border p-2 rounded"
+          onChange={handleEditContactNumberChange}
+        />
+        {editFormData.contact_number && editFormData.contact_number.length !== 11 && (
+          <span className="text-red-500 text-sm">Contact number must be 11 digits.</span>
+        )}
+
         <textarea name="address" value={editFormData.address} className="border p-2 rounded" onChange={handleEditChange}></textarea>
 
         <div className="flex justify-between mt-4">
@@ -615,7 +745,20 @@ const [editFormData, setEditFormData] = useState({});
         </select>
 
         <input type="date" name="birthdate" required className="border p-2 rounded" onChange={handleChange} />
-        <input type="text" name="contact_number" placeholder="Contact Number" className="border p-2 rounded" onChange={handleChange} />
+
+        {/* Contact Number Validation */}
+        <input
+          type="text"
+          name="contact_number"
+          placeholder="Contact Number"
+          className="border p-2 rounded"
+          value={formData.contact_number || ""}
+          onChange={handleContactNumberChange}
+        />
+        {formData.contact_number && formData.contact_number.length !== 11 && (
+          <span className="text-red-500 text-sm">Contact number must be 11 digits.</span>
+        )}
+
         <textarea name="address" placeholder="Address" className="border p-2 rounded" onChange={handleChange}></textarea>
 
         <div className="flex justify-between mt-4">
@@ -641,6 +784,7 @@ function ProgramHead() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [programHeads, setProgramHeads] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -783,20 +927,16 @@ function ProgramHead() {
     });
   };
 
+  // Filter program heads based on search query
+  const filteredProgramHeads = programHeads.filter((head) =>
+    head.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="p-6">
       {/* Header Section */}
       <div className="bg-blue-100 p-4 flex justify-between items-center rounded-lg shadow-md">
         <h2 className="text-lg md:text-xl">Program Heads</h2>
-        <div className="flex gap-4 text-sm md:text-base">
-          <select className="bg-white border border-gray-300 p-2 rounded-md text-gray-700 cursor-pointer">
-            <option>BSIT</option>
-            <option>CJEP</option>
-            <option>BSBA</option>
-            <option>BEED</option>
-            <option>HM</option>
-          </select>
-        </div>
       </div>
 
       {/* Search & Add Button */}
@@ -805,51 +945,55 @@ function ProgramHead() {
           type="text"
           placeholder="Search for program head"
           className="border border-gray-300 p-2 rounded-md w-60"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
         />
         <button className="bg-gray-200 px-4 py-2 rounded-md" onClick={() => setIsModalOpen(true)}>
           ➕ Add New Program Head
         </button>
       </div>
 
-      <div className="overflow-x-auto mt-5">
       {/* Program Head Table */}
-      <table className="w-full border-collapse border border-gray-300">
-        <thead>
-          <tr className="bg-blue-200">
-            <th className="border border-gray-400 px-4 py-2">Name</th>
-            <th className="border border-gray-400 px-4 py-2">Email</th>
-            <th className="border border-gray-400 px-4 py-2">Department</th>
-            <th className="border border-gray-400 px-4 py-2">Department Type</th>
-            <th className="border border-gray-400 px-4 py-2">Status</th>
-            <th className="border border-gray-400 px-4 py-2">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {programHeads.map((head, index) => (
-            <tr key={index} className={index % 2 === 0 ? "bg-gray-100" : "bg-white"}>
-              <td className="border border-gray-400 px-4 py-2">{head.name}</td>
-              <td className="border border-gray-400 px-4 py-2">{head.email}</td>
-              <td className="border border-gray-400 px-4 py-2">{head.department}</td>
-              <td className="border border-gray-400 px-4 py-2">{head.department_type}</td>
-              <td className="border border-gray-400 px-4 py-2">{head.status}</td>
-              <td className="border border-gray-400 px-4 py-2 flex justify-center gap-2">
-  <button
-    onClick={() => handleEdit(head)}
-    className=" hover:text-yellow-500"
-  >
-    <FaEdit className="w-5 h-5" />
-  </button>
-  <button
-    onClick={() => handleDelete(head.id)}
-    className="text-red-500 hover:text-red-600"
-  >
-    <FaTrashAlt className="w-5 h-5" />
-  </button>
-</td>
+      <div className="overflow-x-auto mt-5">
+        <table className="w-full border-collapse border border-gray-300">
+          <thead>
+            <tr className="bg-blue-200">
+              <th className="border border-gray-400 px-4 py-2 text-left">Name</th>
+              <th className="border border-gray-400 px-4 py-2 text-left">Email</th>
+              <th className="border border-gray-400 px-4 py-2">Department</th>
+              <th className="border border-gray-400 px-4 py-2">Department Type</th>
+              <th className="border border-gray-400 px-4 py-2">Status</th>
+              <th className="border border-gray-400 px-4 py-2">Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {filteredProgramHeads.length > 0 ? (
+              filteredProgramHeads.map((head, index) => (
+                <tr key={index} className={index % 2 === 0 ? "bg-gray-100" : "bg-white"}>
+                  <td className="border border-gray-400 px-4 py-2">{head.name}</td>
+                  <td className="border border-gray-400 px-4 py-2">{head.email}</td>
+                  <td className="border border-gray-400 px-4 py-2">{head.department}</td>
+                  <td className="border border-gray-400 px-4 py-2">{head.department_type}</td>
+                  <td className="border border-gray-400 px-4 py-2">{head.status}</td>
+                  <td className="border border-gray-400 px-4 py-2 flex justify-center gap-2">
+                    <button onClick={() => handleEdit(head)} className="hover:text-yellow-500">
+                      <FaEdit className="w-5 h-5" />
+                    </button>
+                    <button onClick={() => handleDelete(head.id)} className="text-red-500 hover:text-red-600">
+                      <FaTrashAlt className="w-5 h-5" />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="6" className="text-center p-4 text-gray-500">
+                  No program heads found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
 
       {/* Edit Modal */}
 {isEditModalOpen && (

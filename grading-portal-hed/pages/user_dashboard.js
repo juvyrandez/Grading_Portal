@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import { FiUser, FiBook, FiBell, FiSettings, FiLogOut, FiMenu, FiHome } from "react-icons/fi";
-import { FaUserGraduate, FaUserTie, FaBookOpen } from "react-icons/fa";
+import { MdDashboard } from "react-icons/md";
+import { FaHandsHelping } from "react-icons/fa";
+import { FiBell, FiLogOut, FiMenu } from "react-icons/fi";
 import "@fontsource/poppins";
+import { FaBook } from "react-icons/fa";
 import Swal from "sweetalert2";
 import { FaUserCircle } from "react-icons/fa";
 import { FaCamera } from "react-icons/fa";
+import { FaHome } from "react-icons/fa";
 
 export default function UserDashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
@@ -59,16 +62,17 @@ export default function UserDashboard() {
         </div>
 
         <ul className="font-poppins mt-6 space-y-3">
-          <SidebarItem icon={FiUser} label="Dashboard" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
-          <SidebarItem icon={FiBook} label="Grades" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
-          <SidebarItem icon={FiSettings} label="Help" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
+  <SidebarItem icon={MdDashboard} label="Dashboard" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
+  <SidebarItem icon={FaBook} label="Grades" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
+  <SidebarItem icon={FaHandsHelping} label="Help" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
+
 
           {/* Back to Home Button */}
           <li
             className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-800 transition cursor-pointer mt-6"
             onClick={() => router.push("/")}
           >
-            <FiHome size={28} />
+            <FaHome size={28} />
             {isSidebarOpen && <span>Back to Home</span>}
           </li>
         </ul>

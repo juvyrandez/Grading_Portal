@@ -3,6 +3,7 @@ CREATE DATABASE grading_portal;
 USE grading_portal;
 
 
+
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     fullname VARCHAR(255) NOT NULL,
@@ -17,6 +18,7 @@ CREATE TABLE users (
     contact_number VARCHAR(15) DEFAULT NULL,
     address TEXT DEFAULT NULL,
     status ENUM('Active', 'Inactive') NOT NULL DEFAULT 'Active',
+    profile_img VARCHAR(255) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -42,18 +44,6 @@ CREATE TABLE subjects (
     units INT NOT NULL
 );
 
-CREATE TABLE subjects (
-    subject_id INT PRIMARY KEY AUTO_INCREMENT,
-    department VARCHAR(50) NOT NULL,
-    year_level VARCHAR(20) NOT NULL,
-    semester VARCHAR(20) NOT NULL,
-    subject_code VARCHAR(20) NOT NULL,
-    subject_name VARCHAR(100) NOT NULL,
-    units INT NOT NULL,
-    midterm FLOAT DEFAULT NULL,
-    final FLOAT DEFAULT NULL,
-    remarks VARCHAR(100) DEFAULT NULL
-);
 
 
 CREATE TABLE student_grades (

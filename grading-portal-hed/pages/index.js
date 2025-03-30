@@ -13,6 +13,7 @@ export default function Home() {
   const [user, setUser] = useState(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const router = useRouter();
+  
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -20,6 +21,8 @@ export default function Home() {
       setUser(JSON.parse(storedUser));
     }
   }, []);
+
+  
 
   return (
     <div>
@@ -137,10 +140,12 @@ export default function Home() {
     <p className="text-base sm:text-xl md:text-2xl mb-6 sm:mb-8">
       The official grading portal for St. Rita’s College of Balingasag. This platform allows students to easily view their grades, track academic progress, and stay updated on course performance. Faculty can also upload and manage grades efficiently. We’re here to support your academic journey every step of the way.
     </p>
-    <button className="font-poppins bg-sky-900 hover:bg-blue-800 px-6 sm:px-8 py-3 sm:py-4 text-lg sm:text-xl rounded-md border border-white">
-      Get Started
-    </button>
-  </div>
+    <a href="#services">
+  <button className="font-poppins bg-sky-900 hover:bg-blue-800 px-6 sm:px-8 py-3 sm:py-4 text-lg sm:text-xl rounded-md border border-white">
+    Get Started
+  </button>
+</a>
+</div>
 
   {/* Right Arrow */}
   <button className="hidden sm:block absolute right-4 sm:right-16 top-1/2 transform -translate-y-1/2 text-white text-4xl sm:text-5xl">

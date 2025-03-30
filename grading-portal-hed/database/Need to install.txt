@@ -6,5 +6,3 @@ npm install mysql2
 npm install sweetalert2
 npm install chart.js react-chartjs-2
 npm install multer
-
-

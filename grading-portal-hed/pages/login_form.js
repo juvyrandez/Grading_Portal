@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
+import Swal from "sweetalert2";
 
 export default function LoginForm() {
   const [username, setUsername] = useState("");
@@ -29,8 +30,28 @@ export default function LoginForm() {
     setMessage(data.message);
   
     if (res.ok) {
-      alert("Login successful");
-      localStorage.setItem("user", JSON.stringify(data.user))
+      let userMessage = "";
+      
+      switch (data.user.user_type) {
+        case "admin":
+          userMessage = "Welcome to the Admin Dashboard!";
+          break;
+        case "programhead":
+          userMessage = "Welcome to the Program Head Panel!";
+          break;
+        default:
+          userMessage = "Welcome to your Student Dashboard!";
+      }
+  
+      Swal.fire({
+        icon: "success",
+        title: "Login Successful",
+        text: userMessage,
+        showConfirmButton: false,
+        timer: 2000,
+      });
+  
+      localStorage.setItem("user", JSON.stringify(data.user));
   
       if (rememberMe) {
         localStorage.setItem("rememberedUsername", username);
@@ -39,18 +60,24 @@ export default function LoginForm() {
       }
   
       // Redirect based on user_type
-    switch (data.user.user_type) {
-      case "admin":
-        router.push("/admin_dashboard");
-        break;
-      case "programhead":
-        router.push("/program_head");
-        break;
-      default:
-        router.push("/user_dashboard");
+      switch (data.user.user_type) {
+        case "admin":
+          router.push("/admin_dashboard");
+          break;
+        case "programhead":
+          router.push("/program_head");
+          break;
+        default:
+          router.push("/user_dashboard");
+      }
+    } else {
+      Swal.fire({
+        icon: "error",
+        title: "Login Failed",
+        text: data.message || "Invalid username or password",
+      });
     }
-  }
-};
+  };
 
   return (
     <div className="relative h-screen bg-cover bg-center" style={{ backgroundImage: "url('images/loginbg.png')" }}>

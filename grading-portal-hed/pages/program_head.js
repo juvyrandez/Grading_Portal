@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import { FiUsers, FiClipboard, FiMenu, FiBell, FiUser, FiLogOut, FiChevronDown, FiChevronUp,FiEdit } from "react-icons/fi";
+import { FiMenu, FiBell, FiLogOut, FiChevronDown, FiChevronUp } from "react-icons/fi";
 import "@fontsource/poppins";
 import Swal from "sweetalert2";
 import { FaUserGraduate } from "react-icons/fa";
 import { FaEye } from "react-icons/fa";
 import { FaGraduationCap } from "react-icons/fa";
+import { MdDashboard } from "react-icons/md";
+import { MdAddchart } from "react-icons/md";
+import { FaUserFriends } from "react-icons/fa";
 
 export default function ProgramHeadDashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
@@ -68,9 +71,9 @@ export default function ProgramHeadDashboard() {
   </div>
 
   <ul className="mt-6 space-y-3">
-    <SidebarItem icon={FiClipboard} label="Dashboard" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
+    <SidebarItem icon={MdDashboard} label="Dashboard" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
     <SidebarItem
-      icon={FiUsers}
+      icon={FaUserFriends}
       label="Program Students"
       activeTab={activeTab}
       setActiveTab={setActiveTab}
@@ -79,7 +82,7 @@ export default function ProgramHeadDashboard() {
       dropdownItems={["1st Year", "2nd Year", "3rd Year", "4th Year"]}
     />
     <SidebarItem
-      icon={FiEdit}
+      icon={MdAddchart}
       label="Add Grades"
       activeTab={activeTab}
       setActiveTab={setActiveTab}
@@ -400,6 +403,7 @@ function ProgramStudents({ year }) {
   const [students, setStudents] = useState([]);
   const [programHead, setProgramHead] = useState(null);
   const [viewedStudent, setViewedStudent] = useState(null);
+  
   
 
   // Load user data on mount
