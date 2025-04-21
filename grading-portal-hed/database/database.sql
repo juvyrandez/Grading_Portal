@@ -1,8 +1,5 @@
 CREATE DATABASE grading_portal;
 
-USE grading_portal;
-
-
 
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -46,6 +43,7 @@ CREATE TABLE subjects (
 
 
 
+
 CREATE TABLE student_grades (
     grade_id INT PRIMARY KEY AUTO_INCREMENT,
     student_id INT NOT NULL,
@@ -53,10 +51,20 @@ CREATE TABLE student_grades (
     midterm FLOAT DEFAULT NULL,
     final FLOAT DEFAULT NULL,
     remarks VARCHAR(100) DEFAULT NULL,
+    is_irregular BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (student_id) REFERENCES users(id),
     FOREIGN KEY (subject_id) REFERENCES subjects(subject_id)
 );
 
+
+CREATE TABLE irregular_student_subjects (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  student_id INT NOT NULL,
+  subject_id INT NOT NULL,
+  semester VARCHAR(20) NOT NULL,
+  FOREIGN KEY (student_id) REFERENCES users(id),
+  FOREIGN KEY (subject_id) REFERENCES subjects(subject_id)
+);
 
 
 

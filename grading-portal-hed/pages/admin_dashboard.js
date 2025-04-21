@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import {FiLogOut, FiMenu, FiBell} from "react-icons/fi";
+import {FiLogOut, FiMenu, FiBell,FiSearch,FiPlus,FiEdit2,FiTrash2,FiEye,FiChevronLeft,FiChevronRight} from "react-icons/fi";
 import { MdDashboard } from "react-icons/md";
 import Swal from "sweetalert2";
 import { Bar } from "react-chartjs-2";
 import { FaUserTie } from "react-icons/fa";
 import { FaUserGraduate, FaChalkboardTeacher, FaBookOpen } from "react-icons/fa";
-import { FaEye, FaEdit, FaTrashAlt } from "react-icons/fa";
+import { FaEye, FaEdit, FaTrash ,FaTrashAlt } from "react-icons/fa";
 import { FaArrowLeft, FaArrowRight } from "react-icons/fa";
 import { FaUserFriends } from "react-icons/fa";
 import { FaBook } from "react-icons/fa";
@@ -154,7 +154,7 @@ function Dashboard() {
   });
 
   useEffect(() => {
-    fetch("/api/getCounts")
+    fetch("/api/admin_programhead/getCounts")
       .then((res) => res.json())
       .then((data) => {
         setStudentsCount(data.students);
@@ -163,7 +163,7 @@ function Dashboard() {
       })
       .catch((err) => console.error("Error fetching counts:", err));
 
-    fetch("/api/getDepartmentCounts")
+    fetch("/api/admin_programhead/getDepartmentCounts")
       .then((res) => res.json())
       .then((data) => setDepartmentCounts(data))
       .catch((err) => console.error("Error fetching department counts:", err));
@@ -242,7 +242,7 @@ function Dashboard() {
 // STUDENTS
 function Students() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-const [editFormData, setEditFormData] = useState({});
+  const [editFormData, setEditFormData] = useState({});
   const [students, setStudents] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [error, setError] = useState("");
@@ -253,8 +253,19 @@ const [editFormData, setEditFormData] = useState({});
   const [selectedYear, setSelectedYear] = useState("");
   const [selectedCourse, setSelectedCourse] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-const studentsPerPage = 10
+  const studentsPerPage = 10;
   
+  // Irregular subjects state
+  const [irregularSubjects, setIrregularSubjects] = useState({
+    available: [],
+    assigned: []
+  });
+  const [newIrregularSubject, setNewIrregularSubject] = useState({
+    subject_id: '',
+    semester: '1st Semester'
+  });
+  const [selectedDepartment, setSelectedDepartment] = useState("");
+
   const [formData, setFormData] = useState({
     fullname: "",
     email: "",
@@ -273,31 +284,132 @@ const studentsPerPage = 10
     setIsViewModalOpen(true);
   };
 
-  const handleEdit = (student) => {
-    setEditFormData(student);
+  const handleEdit = async (student) => {
+    setEditFormData({
+      ...student,
+      password: '' // Clear password field when opening modal
+    });
     setIsEditModalOpen(true);
+    setSelectedDepartment("");
+    await fetchIrregularSubjects(student.id);
   };
 
   const handleEditChange = (e) => {
     setEditFormData({ ...editFormData, [e.target.name]: e.target.value });
   };
-  
+
+  // Fetch irregular subjects for a student with department filter
+  const fetchIrregularSubjects = async (studentId) => {
+    try {
+      const url = `/api/students_dashboard/irregularSubjects?studentId=${studentId}${
+        selectedDepartment ? `&department=${selectedDepartment}` : ''
+      }`;
+      const res = await fetch(url);
+      const data = await res.json();
+      setIrregularSubjects({
+        available: data.availableSubjects || [],
+        assigned: data.assignedSubjects || []
+      });
+    } catch (error) {
+      console.error('Error fetching irregular subjects:', error);
+    }
+  };
+
+  // Add department filter effect
+  useEffect(() => {
+    if (isEditModalOpen && editFormData.id) {
+      fetchIrregularSubjects(editFormData.id);
+    }
+  }, [selectedDepartment]);
+
+  // Add irregular subject
+  const handleAddIrregularSubject = async () => {
+    try {
+      const response = await fetch('/api/students_dashboard/irregularSubjects', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          student_id: editFormData.id,
+          subject_id: newIrregularSubject.subject_id,
+          semester: newIrregularSubject.semester
+        }),
+      });
+
+      if (response.ok) {
+        fetchIrregularSubjects(editFormData.id);
+        setNewIrregularSubject({
+          subject_id: '',
+          semester: '1st Semester'
+        });
+        Swal.fire({
+          icon: 'success',
+          title: 'Subject Added',
+          text: 'Irregular subject has been assigned to the student',
+          timer: 2000,
+          showConfirmButton: false
+        });
+      }
+    } catch (error) {
+      console.error('Error adding irregular subject:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to add irregular subject',
+      });
+    }
+  };
+
+  // Remove irregular subject
+  const handleRemoveIrregularSubject = async (subjectId) => {
+    try {
+      const response = await fetch(
+        `/api/students_dashboard/irregularSubjects?student_id=${editFormData.id}&subject_id=${subjectId}`,
+        { method: 'DELETE' }
+      );
+
+      if (response.ok) {
+        fetchIrregularSubjects(editFormData.id);
+        Swal.fire({
+          icon: 'success',
+          title: 'Subject Removed',
+          text: 'Irregular subject has been removed',
+          timer: 2000,
+          showConfirmButton: false
+        });
+      }
+    } catch (error) {
+      console.error('Error removing irregular subject:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to remove irregular subject',
+      });
+    }
+  };
 
   // Handle Update
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     setError("");
-  
+
     try {
-      const res = await fetch("/api/updateStudent", {
+      // Create a copy of editFormData without the password if it's empty
+      const dataToSend = { ...editFormData };
+      if (!dataToSend.password || dataToSend.password.trim() === '') {
+        delete dataToSend.password;
+      }
+
+      const res = await fetch("/api/students/updateStudent", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editFormData),
+        body: JSON.stringify(dataToSend),
       });
-  
+
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to update student");
-  
+
       Swal.fire({
         icon: "success",
         title: "Updated!",
@@ -305,7 +417,7 @@ const studentsPerPage = 10
         showConfirmButton: false,
         timer: 2000,
       });
-  
+
       setIsEditModalOpen(false);
       fetchStudents();
     } catch (error) {
@@ -317,7 +429,6 @@ const studentsPerPage = 10
       setError(error.message);
     }
   };
-  
 
   // Handle Delete
   const handleDelete = async (id) => {
@@ -332,7 +443,7 @@ const studentsPerPage = 10
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          const res = await fetch(`/api/deleteStudent?id=${id}`, {
+          const res = await fetch(`/api/students/deleteStudent?id=${id}`, {
             method: "DELETE",
           });
   
@@ -355,85 +466,69 @@ const studentsPerPage = 10
           });
           console.error("Error deleting student:", error);
         }
-      } else {
-        Swal.fire({
-          icon: "info",
-          title: "Cancelled",
-          text: "The student was not deleted.",
-          showConfirmButton: false,
-          timer: 1500,
-        });
       }
     });
   };
-  
 
   // Filter students based on search, year level, and course
-useEffect(() => {
-  let filtered = students;
+  useEffect(() => {
+    let filtered = students;
 
-  if (searchQuery) {
-    filtered = filtered.filter(
-      (student) =>
-        student.fullname.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        student.email.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }
+    if (searchQuery) {
+      filtered = filtered.filter(
+        (student) =>
+          student.fullname.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          student.email.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
 
-  if (selectedYear) {
-    filtered = filtered.filter((student) => student.year_level == selectedYear);
-  }
+    if (selectedYear) {
+      filtered = filtered.filter((student) => student.year_level == selectedYear);
+    }
 
-  if (selectedCourse) {
-    filtered = filtered.filter((student) => student.course === selectedCourse);
-  }
+    if (selectedCourse) {
+      filtered = filtered.filter((student) => student.course === selectedCourse);
+    }
 
-  setFilteredStudents(filtered);
-  setCurrentPage(1); // Reset to first page on filter change
-}, [searchQuery, selectedYear, selectedCourse, students]);
+    setFilteredStudents(filtered);
+    setCurrentPage(1); // Reset to first page on filter change
+  }, [searchQuery, selectedYear, selectedCourse, students]);
 
-useEffect(() => {
-  fetchStudents();
-}, []);
+  useEffect(() => {
+    fetchStudents();
+  }, []);
 
-const fetchStudents = async () => {
-  try {
-    const res = await fetch("/api/students");
-    const data = await res.json();
-    setStudents(data);
-    setFilteredStudents(data);
-  } catch (error) {
-    console.error("Error fetching students:", error);
-  }
-};
+  const fetchStudents = async () => {
+    try {
+      const res = await fetch("/api/students/students");
+      const data = await res.json();
+      setStudents(data);
+      setFilteredStudents(data);
+    } catch (error) {
+      console.error("Error fetching students:", error);
+    }
+  };
 
+  // Pagination logic
+  const indexOfLastStudent = currentPage * studentsPerPage;
+  const indexOfFirstStudent = indexOfLastStudent - studentsPerPage;
+  const currentStudents = filteredStudents.slice(indexOfFirstStudent, indexOfLastStudent);
 
-// Pagination logic
-const indexOfLastStudent = currentPage * studentsPerPage;
-const indexOfFirstStudent = indexOfLastStudent - studentsPerPage;
-const currentStudents = filteredStudents.slice(indexOfFirstStudent, indexOfLastStudent);
+  const nextPage = () => {
+    if (currentPage < Math.ceil(filteredStudents.length / studentsPerPage)) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
 
-const nextPage = () => {
-  if (currentPage < Math.ceil(filteredStudents.length / studentsPerPage)) {
-    setCurrentPage(currentPage + 1);
-  }
-};
-
-const prevPage = () => {
-  if (currentPage > 1) {
-    setCurrentPage(currentPage - 1);
-  }
-};
-
-
-
-
-
+  const prevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
-
 
   // Handle Adding
   const handleSubmit = async (e) => {
@@ -448,7 +543,7 @@ const prevPage = () => {
         didOpen: () => Swal.showLoading(),
       });
   
-      const res = await fetch("/api/addStudent", {
+      const res = await fetch("/api/students/addStudent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -493,31 +588,35 @@ const prevPage = () => {
       setEditFormData({ ...editFormData, contact_number: value });
     }
   };
-  
+
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+    setSelectedDepartment(""); // Clear department filter when closing modal
+  };
 
   return (
     <div className="p-6">
       {/* Header Section */}
-      <div className="bg-blue-100 p-4 flex justify-between items-center flex-wrap rounded-lg shadow-md">
-        <h2 className="text-lg md:text-xl">View Students</h2>
-        <div className="flex gap-4 text-sm md:text-base">
+      <div className="bg-gradient-to-r from-blue-100 to-blue-200 p-4 flex flex-col md:flex-row justify-between items-center rounded-lg shadow-lg">
+        <h2 className="text-xl text-black mb-3 md:mb-0">Student Management</h2>
+        <div className="flex gap-3">
           <select
-            className="bg-white border border-gray-300 p-2 rounded-md text-gray-700 cursor-pointer"
+            className="bg-white bg-opacity-90 border border-blue-200 p-2 rounded-lg text-gray-700 cursor-pointer shadow-sm focus:ring-2 focus:ring-white focus:border-white"
             onChange={(e) => setSelectedYear(e.target.value)}
             value={selectedYear}
           >
-            <option value="">All Years</option>
+            <option value="" className="text-gray-500">All Years</option>
             <option value="1">1st Year</option>
             <option value="2">2nd Year</option>
             <option value="3">3rd Year</option>
             <option value="4">4th Year</option>
           </select>
           <select
-            className="bg-white border border-gray-300 p-2 rounded-md text-gray-700 cursor-pointer"
+            className="bg-white bg-opacity-90 border border-blue-200 p-2 rounded-lg text-gray-700 cursor-pointer shadow-sm focus:ring-2 focus:ring-white focus:border-white"
             onChange={(e) => setSelectedCourse(e.target.value)}
             value={selectedCourse}
           >
-            <option value="">All Courses</option>
+            <option value="" className="text-gray-500">All Courses</option>
             <option value="BSIT">BSIT</option>
             <option value="CJEP">CJEP</option>
             <option value="BSBA">BSBA</option>
@@ -528,253 +627,638 @@ const prevPage = () => {
       </div>
   
       {/* Search & Add Button */}
-      <div className="flex justify-between items-center mt-4">
-        <input
-          type="text"
-          placeholder="Search for student"
-          className="border border-gray-300 p-2 rounded-md w-60"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
+      <div className="flex flex-col sm:flex-row justify-between items-center mt-6 gap-4">
+        <div className="relative w-full sm:w-64">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <FiSearch className="text-gray-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search students..."
+            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
         <button
-          className="bg-gray-200 px-4 py-2 rounded-md flex items-center gap-2"
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md transition-colors duration-200 whitespace-nowrap"
           onClick={() => setIsModalOpen(true)}
         >
-          <span>➕</span> Add Student Account
+          <FiPlus className="w-5 h-5" />
+          Add Student
         </button>
       </div>
   
-      {error && <p className="text-red-500 mt-2">{error}</p>}
+      {error && (
+        <div className="mt-4 p-3 bg-red-100 border-l-4 border-red-500 text-red-700 rounded">
+          <p>{error}</p>
+        </div>
+      )}
   
       {/* Student Table */}
-<table className="w-full border-collapse mt-4">
-  <thead className="bg-gray-200">
-    <tr>
-      <th className="p-2 border text-left">Name</th>
-      <th className="p-2 border text-left">Email</th>
-      <th className="p-2 border">Course</th>
-      <th className="p-2 border">Year Level</th>
-      <th className="p-2 border">Status</th>
-      <th className="p-2 border">Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    {currentStudents.length > 0 ? (
-      currentStudents.map((student) => (
-        <tr key={student.id} className="border">
-          <td className="p-2 border text-left">{student.fullname}</td>
-          <td className="p-2 border text-left">{student.email}</td>
-          <td className="p-2 border text-center">{student.course}</td>
-          <td className="p-2 border text-center">{student.year_level}</td>
-          <td className="p-2 border text-center">{student.status}</td>
-          <td className="p-2 border flex justify-center gap-2">
-            <button className="text-blue-500 hover:text-blue-700" onClick={() => handleView(student)}>
-              <FaEye className="w-5 h-5" />
-            </button>
-            <button className="hover:text-yellow-700" onClick={() => handleEdit(student)}>
-              <FaEdit className="w-5 h-5" />
-            </button>
-            <button className="text-red-500 hover:text-red-700" onClick={() => handleDelete(student.id)}>
-              <FaTrashAlt className="w-5 h-5" />
-            </button>
-          </td>
-        </tr>
-      ))
-    ) : (
-      <tr>
-        <td colSpan="6" className="text-center p-4 text-gray-500">
-          No students found.
-        </td>
-      </tr>
-    )}
-  </tbody>
-</table>
+      <div className="mt-6 overflow-x-auto rounded-lg shadow-md border border-gray-200">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Name
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Email
+              </th>
+              <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Course
+              </th>
+              <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Year Level
+              </th>
+              <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {currentStudents.length > 0 ? (
+              currentStudents.map((student) => (
+                <tr key={student.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {student.fullname}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    {student.email}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                    {student.course}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                    {student.year_level}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-center">
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      student.status === 'Active' 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {student.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex justify-end space-x-2">
+                      <button 
+                        onClick={() => handleView(student)}
+                        className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
+                        title="View"
+                      >
+                        <FiEye className="w-5 h-5" />
+                      </button>
+                      <button 
+                        onClick={() => handleEdit(student)}
+                        className="text-yellow-600 hover:text-yellow-900 p-1 rounded hover:bg-yellow-50"
+                        title="Edit"
+                      >
+                        <FiEdit2 className="w-5 h-5" />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(student.id)}
+                        className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
+                        title="Delete"
+                      >
+                        <FiTrash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="6" className="px-6 py-4 text-center text-sm text-gray-500">
+                  No students found matching your criteria
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
   
       {/* Pagination Controls */}
-<div className="flex justify-end items-center mt-4 gap-2">
-  <button
-    onClick={prevPage}
-    disabled={currentPage === 1}
-    className={`px-3 py-2 rounded-md flex items-center ${
-      currentPage === 1 ? "bg-gray-300 cursor-not-allowed" : "bg-blue-500 text-white"
-    }`}
-  >
-    <FaArrowLeft className="w-5 h-5" />
-  </button>
-  <span className="text-gray-700">
-    Page {currentPage} of {Math.ceil(filteredStudents.length / studentsPerPage)}
-  </span>
-  <button
-    onClick={nextPage}
-    disabled={currentPage === Math.ceil(filteredStudents.length / studentsPerPage)}
-    className={`px-3 py-2 rounded-md flex items-center ${
-      currentPage === Math.ceil(filteredStudents.length / studentsPerPage) ? "bg-gray-300 cursor-not-allowed" : "bg-blue-500 text-white"
-    }`}
-  >
-    <FaArrowRight className="w-5 h-5" />
-  </button>
-</div>
+      <div className="flex flex-col sm:flex-row justify-between items-center mt-6 gap-4">
+        <div className="text-sm text-gray-600">
+          Showing {indexOfFirstStudent + 1} to {Math.min(indexOfLastStudent, filteredStudents.length)} of {filteredStudents.length} students
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={prevPage}
+            disabled={currentPage === 1}
+            className={`px-4 py-2 rounded-lg flex items-center gap-1 ${
+              currentPage === 1 
+                ? "bg-gray-200 text-gray-500 cursor-not-allowed" 
+                : "bg-blue-600 text-white hover:bg-blue-700"
+            } transition-colors`}
+          >
+            <FiChevronLeft className="w-5 h-5" />
+            <span>Previous</span>
+          </button>
+          <div className="flex items-center gap-1">
+            {Array.from({ length: Math.ceil(filteredStudents.length / studentsPerPage) }, (_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentPage(i + 1)}
+                className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  currentPage === i + 1 
+                    ? "bg-blue-600 text-white" 
+                    : "bg-white text-gray-700 hover:bg-gray-100"
+                } transition-colors`}
+              >
+                {i + 1}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={nextPage}
+            disabled={currentPage === Math.ceil(filteredStudents.length / studentsPerPage)}
+            className={`px-4 py-2 rounded-lg flex items-center gap-1 ${
+              currentPage === Math.ceil(filteredStudents.length / studentsPerPage)
+                ? "bg-gray-200 text-gray-500 cursor-not-allowed" 
+                : "bg-blue-600 text-white hover:bg-blue-700"
+            } transition-colors`}
+          >
+            <span>Next</span>
+            <FiChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
 
-{/* View Student Modal */}
-{isViewModalOpen && selectedStudent && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
-    <div className="bg-white p-6 rounded-lg shadow-lg w-96">
-      <h2 className="text-lg font-semibold mb-4">Student Details</h2>
-      <p><strong>Full Name:</strong> {selectedStudent.fullname}</p>
-      <p><strong>Email:</strong> {selectedStudent.email}</p>
-      <p><strong>Username:</strong> {selectedStudent.username}</p>
-      <p><strong>Course:</strong> {selectedStudent.course}</p>
-      <p><strong>Year Level:</strong> {selectedStudent.year_level}</p>
-      <p><strong>Gender:</strong> {selectedStudent.gender}</p>
-      <p><strong>Birthdate:</strong> {selectedStudent.birthdate.split("T")[0]}</p> {/* Removes time part */}
-      <p><strong>Contact Number:</strong> {selectedStudent.contact_number}</p>
-      <p><strong>Address:</strong> {selectedStudent.address}</p>
-      <p><strong>Status:</strong> {selectedStudent.status}</p>
-      <div className="flex justify-end mt-4">
-        <button className="bg-gray-400 text-white px-4 py-2 rounded" onClick={() => setIsViewModalOpen(false)}>
-          Close
-        </button>
+      {/* View Student Modal */}
+      {isViewModalOpen && selectedStudent && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+            <h2 className="text-lg font-semibold mb-4">Student Details</h2>
+            <p><strong>Full Name:</strong> {selectedStudent.fullname}</p>
+            <p><strong>Email:</strong> {selectedStudent.email}</p>
+            <p><strong>Username:</strong> {selectedStudent.username}</p>
+            <p><strong>Course:</strong> {selectedStudent.course}</p>
+            <p><strong>Year Level:</strong> {selectedStudent.year_level}</p>
+            <p><strong>Gender:</strong> {selectedStudent.gender}</p>
+            <p><strong>Birthdate:</strong> {selectedStudent.birthdate.split("T")[0]}</p>
+            <p><strong>Contact Number:</strong> {selectedStudent.contact_number}</p>
+            <p><strong>Address:</strong> {selectedStudent.address}</p>
+            <p><strong>Status:</strong> {selectedStudent.status}</p>
+            <div className="flex justify-end mt-4">
+              <button className="bg-gray-400 text-white px-4 py-2 rounded" onClick={() => setIsViewModalOpen(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Student Modal with Irregular Subjects */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-semibold mb-4">Edit Student</h2>
+            <form onSubmit={handleEditSubmit} className="flex flex-col gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                  <input 
+                    type="text" 
+                    name="fullname" 
+                    value={editFormData.fullname} 
+                    className="border p-2 rounded w-full" 
+                    onChange={handleEditChange} 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input 
+                    type="email" 
+                    name="email" 
+                    value={editFormData.email} 
+                    className="border p-2 rounded w-full" 
+                    onChange={handleEditChange} 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                  <input 
+                    type="text" 
+                    name="username" 
+                    value={editFormData.username} 
+                    className="border p-2 rounded w-full" 
+                    onChange={handleEditChange} 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">New Password (optional)</label>
+                  <input 
+                    type="password" 
+                    name="password" 
+                    placeholder="Leave blank to keep current" 
+                    className="border p-2 rounded w-full" 
+                    onChange={handleEditChange}
+                    value={editFormData.password || ''}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Course</label>
+                  <select 
+                    name="course" 
+                    value={editFormData.course} 
+                    className="border p-2 rounded w-full" 
+                    onChange={handleEditChange}
+                  >
+                    <option value="BSIT">BSIT</option>
+                    <option value="CJEP">CJEP</option>
+                    <option value="BSBA">BSBA</option>
+                    <option value="TEP">TEP</option>
+                    <option value="HM">HM</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Year Level</label>
+                  <select 
+                    name="year_level" 
+                    value={editFormData.year_level} 
+                    className="border p-2 rounded w-full" 
+                    onChange={handleEditChange}
+                  >
+                    <option value="1">1st Year</option>
+                    <option value="2">2nd Year</option>
+                    <option value="3">3rd Year</option>
+                    <option value="4">4th Year</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                  <select 
+                    name="gender" 
+                    value={editFormData.gender} 
+                    className="border p-2 rounded w-full" 
+                    onChange={handleEditChange}
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Birthdate</label>
+                  <input 
+                    type="date" 
+                    name="birthdate" 
+                    value={editFormData.birthdate} 
+                    className="border p-2 rounded w-full" 
+                    onChange={handleEditChange} 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
+                  <input
+                    type="text"
+                    name="contact_number"
+                    value={editFormData.contact_number || ""}
+                    className="border p-2 rounded w-full"
+                    onChange={handleEditContactNumberChange}
+                  />
+                  {editFormData.contact_number && editFormData.contact_number.length !== 11 && (
+                    <span className="text-red-500 text-sm">Contact number must be 11 digits.</span>
+                  )}
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                  <textarea 
+                    name="address" 
+                    value={editFormData.address} 
+                    className="border p-2 rounded w-full" 
+                    onChange={handleEditChange} 
+                    rows="3"
+                  ></textarea>
+                </div>
+              </div>
+
+              {/* Irregular Subjects Section */}
+              <div className="border-t pt-4 mt-4">
+                <h3 className="font-medium mb-2">Irregular Subject Management</h3>
+                
+                {/* Department Filter */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Department:</label>
+                  <select
+                    value={selectedDepartment}
+                    onChange={(e) => setSelectedDepartment(e.target.value)}
+                    className="border p-2 rounded w-full"
+                  >
+                    <option value="">All Departments</option>
+                    <option value="BSIT">BSIT</option>
+                    <option value="CJEP">CJEP</option>
+                    <option value="BSBA">BSBA</option>
+                    <option value="TEP">TEP</option>
+                    <option value="HM">HM</option>
+                  </select>
+                </div>
+
+                {/* Current Irregular Subjects */}
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium mb-2">Currently Assigned Subjects:</h4>
+                  {irregularSubjects.assigned.length > 0 ? (
+                    <div className="grid grid-cols-1 gap-2">
+                      {irregularSubjects.assigned.map(subject => (
+                        <div key={subject.subject_id} className="flex items-center justify-between p-2 border rounded">
+                          <div>
+                            <span className="font-medium">{subject.subject_code}</span> - {subject.subject_name} 
+                            <span className="text-sm text-gray-500 ml-2">({subject.semester})</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveIrregularSubject(subject.subject_id)}
+                            className="text-red-500 hover:text-red-700 p-1"
+                            title="Remove subject"
+                          >
+                            <FaTrash className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-sm">No irregular subjects assigned</p>
+                  )}
+                </div>
+                
+                {/* Add New Irregular Subject */}
+                <div className="flex flex-col sm:flex-row gap-2 items-end">
+                  <div className="flex-1 w-full">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Update Subject</label>
+                    <select
+                      value={newIrregularSubject.subject_id}
+                      onChange={(e) => setNewIrregularSubject({
+                        ...newIrregularSubject,
+                        subject_id: e.target.value
+                      })}
+                      className="border p-2 rounded w-full"
+                    >
+                      <option value="">Select Subject</option>
+                      {irregularSubjects.available.map(subject => (
+                        <option key={subject.subject_id} value={subject.subject_id}>
+                          {subject.subject_code} - {subject.subject_name} 
+                          (Dept: {subject.department}, Year: {subject.year_level}, Sem: {subject.semester})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="w-full sm:w-auto">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Semester</label>
+                    <select
+                      value={newIrregularSubject.semester}
+                      onChange={(e) => setNewIrregularSubject({
+                        ...newIrregularSubject,
+                        semester: e.target.value
+                      })}
+                      className="border p-2 rounded w-full"
+                    >
+                      <option value="1st Semester">1st Semester</option>
+                      <option value="2nd Semester">2nd Semester</option>
+                      <option value="Summer">Summer</option>
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddIrregularSubject}
+                    disabled={!newIrregularSubject.subject_id}
+                    className={`px-4 py-2 rounded w-full sm:w-auto ${
+                      newIrregularSubject.subject_id 
+                        ? 'bg-blue-500 text-white hover:bg-blue-600' 
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                  >
+                    Update Subject
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex justify-between mt-6">
+                <button 
+                  type="button" 
+                  className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
+                  onClick={handleCloseEditModal}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                >
+                  Update Student
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Student Modal */}
+{isModalOpen && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4">
+    <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl"> {/* Increased max width */}
+      <div className="p-6">
+        <h2 className="text-2xl font-bold mb-6 text-center">Add New Student</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6"> {/* Two-column grid */}
+            
+            {/* Column 1 */}
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-4"> {/* Name fields in 3 columns */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">First Name*</label>
+                  <input 
+                    type="text" 
+                    name="first_name" 
+                    placeholder="First Name" 
+                    required 
+                    className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    onChange={handleChange} 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
+                  <input 
+                    type="text" 
+                    name="middle_name" 
+                    placeholder="Middle Name" 
+                    className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    onChange={handleChange} 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name*</label>
+                  <input 
+                    type="text" 
+                    name="last_name" 
+                    placeholder="Last Name" 
+                    required 
+                    className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    onChange={handleChange} 
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email*</label>
+                <input 
+                  type="email" 
+                  name="email" 
+                  placeholder="student@example.com" 
+                  required 
+                  className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  onChange={handleChange} 
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Username*</label>
+                <input 
+                  type="text" 
+                  name="username" 
+                  placeholder="Username" 
+                  required 
+                  className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  onChange={handleChange} 
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Password*</label>
+                <input 
+                  type="password" 
+                  name="password" 
+                  placeholder="••••••••" 
+                  required 
+                  className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  onChange={handleChange} 
+                />
+              </div>
+            </div>
+
+            {/* Column 2 */}
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Course*</label>
+                  <select 
+                    name="course" 
+                    required 
+                    className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    onChange={handleChange}
+                  >
+                    <option value="">Select Course</option>
+                    <option value="BSIT">BSIT</option>
+                    <option value="CJEP">CJEP</option>
+                    <option value="BSBA">BSBA</option>
+                    <option value="TEP">TEP</option>
+                    <option value="HM">HM</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Year Level*</label>
+                  <select 
+                    name="year_level" 
+                    required 
+                    className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    onChange={handleChange}
+                  >
+                    <option value="">Select Year</option>
+                    <option value="1">1st Year</option>
+                    <option value="2">2nd Year</option>
+                    <option value="3">3rd Year</option>
+                    <option value="4">4th Year</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Gender*</label>
+                  <select 
+                    name="gender" 
+                    required 
+                    className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    onChange={handleChange}
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Birthdate*</label>
+                  <input 
+                    type="date" 
+                    name="birthdate" 
+                    required 
+                    className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    onChange={handleChange} 
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number*</label>
+                <input
+                  type="text"
+                  name="contact_number"
+                  placeholder="09XXXXXXXXX"
+                  className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  value={formData.contact_number || ""}
+                  onChange={handleContactNumberChange}
+                />
+                {formData.contact_number && formData.contact_number.length !== 11 && (
+                  <span className="text-red-500 text-xs mt-1">Contact number must be 11 digits</span>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Address*</label>
+                <textarea 
+                  name="address" 
+                  placeholder="Full address" 
+                  rows="3"
+                  className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  onChange={handleChange}
+                ></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-4 pt-4">
+            <button 
+              type="button" 
+              className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+              onClick={() => setIsModalOpen(false)}
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Add Student
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
 )}
-
-
-
-{isEditModalOpen && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
-    <div className="bg-white p-6 rounded-lg shadow-lg w-96">
-      <h2 className="text-lg font-semibold mb-4">Edit Student</h2>
-      <form onSubmit={handleEditSubmit} className="flex flex-col gap-2">
-        <input type="text" name="fullname" value={editFormData.fullname} className="border p-2 rounded" onChange={handleEditChange} />
-        <input type="email" name="email" value={editFormData.email} className="border p-2 rounded" onChange={handleEditChange} />
-        <input type="text" name="username" value={editFormData.username} className="border p-2 rounded" onChange={handleEditChange} />
-
-        {/* Add Password Field */}
-        <input type="password" name="password" placeholder="New Password (optional)" className="border p-2 rounded" onChange={handleEditChange} />
-
-        <select name="course" value={editFormData.course} className="border p-2 rounded" onChange={handleEditChange}>
-          <option value="BSIT">BSIT</option>
-          <option value="CJEP">CJEP</option>
-          <option value="BSBA">BSBA</option>
-          <option value="TEP">TEP</option>
-          <option value="HM">HM</option>
-        </select>
-
-        <select name="year_level" value={editFormData.year_level} className="border p-2 rounded" onChange={handleEditChange}>
-          <option value="1">1st Year</option>
-          <option value="2">2nd Year</option>
-          <option value="3">3rd Year</option>
-          <option value="4">4th Year</option>
-        </select>
-
-        <select name="gender" value={editFormData.gender} className="border p-2 rounded" onChange={handleEditChange}>
-          <option value="Male">Male</option>
-          <option value="Female">Female</option>
-          <option value="Other">Other</option>
-        </select>
-
-        <input type="date" name="birthdate" value={editFormData.birthdate} className="border p-2 rounded" onChange={handleEditChange} />
-
-        {/* Contact Number Validation */}
-        <input
-          type="text"
-          name="contact_number"
-          value={editFormData.contact_number || ""}
-          className="border p-2 rounded"
-          onChange={handleEditContactNumberChange}
-        />
-        {editFormData.contact_number && editFormData.contact_number.length !== 11 && (
-          <span className="text-red-500 text-sm">Contact number must be 11 digits.</span>
-        )}
-
-        <textarea name="address" value={editFormData.address} className="border p-2 rounded" onChange={handleEditChange}></textarea>
-
-        <div className="flex justify-between mt-4">
-          <button type="button" className="bg-red-400 text-white px-4 py-2 rounded" onClick={() => setIsEditModalOpen(false)}>
-            Cancel
-          </button>
-          <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">
-            Update Student
-          </button>
-        </div>
-      </form>
     </div>
-  </div>
-)}
+  );
+}
 
-
-
-
-{isModalOpen && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
-    <div className="bg-white p-6 rounded-lg shadow-lg w-96">
-      <h2 className="text-lg font-semibold mb-4">Add Student</h2>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-        <input type="text" name="first_name" placeholder="First Name" required className="border p-2 rounded" onChange={handleChange} />
-        <input type="text" name="middle_name" placeholder="Middle Name" className="border p-2 rounded" onChange={handleChange} />
-        <input type="text" name="last_name" placeholder="Last Name" required className="border p-2 rounded" onChange={handleChange} />
-        <input type="email" name="email" placeholder="Email" required className="border p-2 rounded" onChange={handleChange} />
-        <input type="text" name="username" placeholder="Username" required className="border p-2 rounded" onChange={handleChange} />
-        <input type="password" name="password" placeholder="Password" required className="border p-2 rounded" onChange={handleChange} />
-
-        {/* Course Selection Dropdown */}
-        <select name="course" required className="border p-2 rounded" onChange={handleChange}>
-          <option value="">Select Course</option>
-          <option value="BSIT">BSIT</option>
-          <option value="CJEP">CJEP</option>
-          <option value="BSBA">BSBA</option>
-          <option value="TEP">TEP</option>
-          <option value="HM">HM</option>
-        </select>
-
-        {/* Year Level Selection Dropdown */}
-        <select name="year_level" required className="border p-2 rounded" onChange={handleChange}>
-          <option value="">Select Year Level</option>
-          <option value="1">1st Year</option>
-          <option value="2">2nd Year</option>
-          <option value="3">3rd Year</option>
-          <option value="4">4th Year</option>
-        </select>
-
-        <select name="gender" required className="border p-2 rounded" onChange={handleChange}>
-          <option value="">Select Gender</option>
-          <option value="Male">Male</option>
-          <option value="Female">Female</option>
-          <option value="Other">Other</option>
-        </select>
-
-        <input type="date" name="birthdate" required className="border p-2 rounded" onChange={handleChange} />
-
-        {/* Contact Number Validation */}
-        <input
-          type="text"
-          name="contact_number"
-          placeholder="Contact Number"
-          className="border p-2 rounded"
-          value={formData.contact_number || ""}
-          onChange={handleContactNumberChange}
-        />
-        {formData.contact_number && formData.contact_number.length !== 11 && (
-          <span className="text-red-500 text-sm">Contact number must be 11 digits.</span>
-        )}
-
-        <textarea name="address" placeholder="Address" className="border p-2 rounded" onChange={handleChange}></textarea>
-
-        <div className="flex justify-between mt-4">
-          <button type="button" className="bg-red-400 text-white px-4 py-2 rounded" onClick={() => setIsModalOpen(false)}>
-            Cancel
-          </button>
-          <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">
-            Add Student
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-)}
-</div>
-);}
 
 
 
@@ -800,7 +1284,7 @@ function ProgramHead() {
 
   const fetchProgramHeads = async () => {
     try {
-      const res = await fetch("/api/program-head");
+      const res = await fetch("/api/admin_programhead/program-head");
       const data = await res.json();
       setProgramHeads(data);
     } catch (error) {
@@ -813,7 +1297,7 @@ function ProgramHead() {
     e.preventDefault();
   
     try {
-      const res = await fetch("/api/program-head", {
+      const res = await fetch("/api/admin_programhead/program-head", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -858,7 +1342,7 @@ function ProgramHead() {
 
   // Save the edited data
   const handleSaveEdit = async () => {
-    const response = await fetch("/api/program-head", {
+    const response = await fetch("/api/admin_programhead/program-head", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(editingHead),
@@ -897,7 +1381,7 @@ function ProgramHead() {
       cancelButtonText: "No, cancel!",
     }).then(async (result) => {
       if (result.isConfirmed) {
-        const response = await fetch(`/api/program-head?id=${id}`, { method: "DELETE" });
+        const response = await fetch(`/api/admin_programhead/program-head?id=${id}`, { method: "DELETE" });
   
         if (response.ok) {
           Swal.fire({
@@ -935,60 +1419,113 @@ function ProgramHead() {
   return (
     <div className="p-6">
       {/* Header Section */}
-      <div className="bg-blue-100 p-4 flex justify-between items-center rounded-lg shadow-md">
-        <h2 className="text-lg md:text-xl">Program Heads</h2>
+      <div className="bg-gradient-to-r from-blue-100 to-blue-200 p-4 flex justify-between items-center rounded-lg shadow-lg">
+        <h2 className="text-lg md:text-xl text-black">Manage Program Head</h2>
       </div>
-
+  
       {/* Search & Add Button */}
-      <div className="flex justify-between items-center mt-4">
-        <input
-          type="text"
-          placeholder="Search for program head"
-          className="border border-gray-300 p-2 rounded-md w-60"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-        <button className="bg-gray-200 px-4 py-2 rounded-md" onClick={() => setIsModalOpen(true)}>
-          ➕ Add New Program Head
+      <div className="flex flex-col sm:flex-row justify-between items-center mt-4 gap-4">
+        <div className="relative w-full sm:w-64">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <FiSearch className="text-gray-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search program heads..."
+            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <button 
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md transition-colors duration-200"
+          onClick={() => setIsModalOpen(true)}
+        >
+          <FiPlus className="w-5 h-5" />
+          <span>Add New Program Head</span>
         </button>
       </div>
-
+  
       {/* Program Head Table */}
-      <div className="overflow-x-auto mt-5">
-        <table className="w-full border-collapse border border-gray-300">
-          <thead>
-            <tr className="bg-blue-200">
-              <th className="border border-gray-400 px-4 py-2 text-left">Name</th>
-              <th className="border border-gray-400 px-4 py-2 text-left">Email</th>
-              <th className="border border-gray-400 px-4 py-2">Department</th>
-              <th className="border border-gray-400 px-4 py-2">Department Type</th>
-              <th className="border border-gray-400 px-4 py-2">Status</th>
-              <th className="border border-gray-400 px-4 py-2">Actions</th>
+      <div className="mt-6 overflow-x-auto rounded-lg shadow-md border border-gray-200">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Name
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Email
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Department
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Department Type
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="bg-white divide-y divide-gray-200">
             {filteredProgramHeads.length > 0 ? (
               filteredProgramHeads.map((head, index) => (
-                <tr key={index} className={index % 2 === 0 ? "bg-gray-100" : "bg-white"}>
-                  <td className="border border-gray-400 px-4 py-2">{head.name}</td>
-                  <td className="border border-gray-400 px-4 py-2">{head.email}</td>
-                  <td className="border border-gray-400 px-4 py-2">{head.department}</td>
-                  <td className="border border-gray-400 px-4 py-2">{head.department_type}</td>
-                  <td className="border border-gray-400 px-4 py-2">{head.status}</td>
-                  <td className="border border-gray-400 px-4 py-2 flex justify-center gap-2">
-                    <button onClick={() => handleEdit(head)} className="hover:text-yellow-500">
-                      <FaEdit className="w-5 h-5" />
-                    </button>
-                    <button onClick={() => handleDelete(head.id)} className="text-red-500 hover:text-red-600">
-                      <FaTrashAlt className="w-5 h-5" />
-                    </button>
+                <tr key={index} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {head.name}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {head.email}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {head.department}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      head.department_type === 'Academic' 
+                        ? 'bg-blue-100 text-blue-800' 
+                        : 'bg-purple-100 text-purple-800'
+                    }`}>
+                      {head.department_type}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      head.status === 'Active' 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {head.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex justify-end space-x-2">
+                      <button 
+                        onClick={() => handleEdit(head)}
+                        className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
+                        title="Edit"
+                      >
+                        <FiEdit2 className="w-5 h-5" />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(head.id)}
+                        className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
+                        title="Delete"
+                      >
+                        <FiTrash2 className="w-5 h-5" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="6" className="text-center p-4 text-gray-500">
-                  No program heads found.
+                <td colSpan="6" className="px-6 py-4 text-center text-sm text-gray-500">
+                  No program heads found
                 </td>
               </tr>
             )}
@@ -996,82 +1533,104 @@ function ProgramHead() {
         </table>
 
       {/* Edit Modal */}
-{isEditModalOpen && (
-  <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center">
-    <div className="bg-white p-5 rounded shadow-lg w-1/3">
-      <h2 className="text-xl font-bold mb-4">Edit Program Head</h2>
+    {isEditModalOpen && (
+      <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center p-4">
+        <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+          <div className="bg-gradient-to-r from-blue-600 to-blue-800 px-6 py-4 rounded-t-lg">
+            <h2 className="text-xl font-semibold text-white">Edit Program Head</h2>
+          </div>
+          
+          <div className="p-6 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+              <input
+                type="text"
+                value={editingHead.name}
+                onChange={(e) => setEditingHead({ ...editingHead, name: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
 
-      <label className="block mb-2">Name:</label>
-      <input
-        type="text"
-        value={editingHead.name}
-        onChange={(e) => setEditingHead({ ...editingHead, name: e.target.value })}
-        className="w-full border border-gray-300 rounded p-2 mb-2"
-      />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input
+                type="email"
+                value={editingHead.email}
+                onChange={(e) => setEditingHead({ ...editingHead, email: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
 
-      <label className="block mb-2">Email:</label>
-      <input
-        type="email"
-        value={editingHead.email}
-        onChange={(e) => setEditingHead({ ...editingHead, email: e.target.value })}
-        className="w-full border border-gray-300 rounded p-2 mb-2"
-      />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+              <select
+                value={editingHead.department}
+                onChange={(e) => setEditingHead({ ...editingHead, department: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Select Department</option>
+                <option value="BSIT">BSIT</option>
+                <option value="CJEP">CJEP</option>
+                <option value="BSBA">BSBA</option>
+                <option value="TEP">TEP</option>
+                <option value="HM">HM</option>
+              </select>
+            </div>
 
-      <label className="block mb-2">Department:</label>
-      <input
-        type="text"
-        value={editingHead.department}
-        onChange={(e) => setEditingHead({ ...editingHead, department: e.target.value })}
-        className="w-full border border-gray-300 rounded p-2 mb-2"
-      />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Department Type</label>
+              <select
+                value={editingHead.department_type}
+                onChange={(e) => setEditingHead({ ...editingHead, department_type: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="Academic">Academic</option>
+                <option value="Non-Academic">Non-Academic</option>
+              </select>
+            </div>
 
-      <label className="block mb-2">Department Type:</label>
-      <select
-        value={editingHead.department_type}
-        onChange={(e) => setEditingHead({ ...editingHead, department_type: e.target.value })}
-        className="w-full border border-gray-300 rounded p-2 mb-2"
-      >
-        <option value="Academic">Academic</option>
-        <option value="Non-Academic">Non-Academic</option>
-      </select>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select
+                value={editingHead.status}
+                onChange={(e) => setEditingHead({ ...editingHead, status: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
 
-      <label className="block mb-2">Status:</label>
-      <select
-        value={editingHead.status}
-        onChange={(e) => setEditingHead({ ...editingHead, status: e.target.value })}
-        className="w-full border border-gray-300 rounded p-2 mb-4"
-      >
-        <option value="Active">Active</option>
-        <option value="Inactive">Inactive</option>
-      </select>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">New Password (Optional)</label>
+              <input
+                type="password"
+                placeholder="Leave blank to keep current password"
+                value={editingHead.newPassword || ''}
+                onChange={(e) => setEditingHead({ ...editingHead, newPassword: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          </div>
 
-      {/* New Password Field (Optional) */}
-      <label className="block mb-2">New Password (Optional):</label>
-      <input
-        type="password"
-        placeholder="Leave blank to keep the current password"
-        onChange={(e) => setEditingHead({ ...editingHead, newPassword: e.target.value })}
-        className="w-full border border-gray-300 rounded p-2 mb-4"
-      />
-
-      <div className="flex justify-end gap-2">
-        <button
-          onClick={() => setIsEditModalOpen(false)}
-          className="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleSaveEdit}
-          className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
-        >
-          Save
-        </button>
+          <div className="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-end space-x-3">
+            <button
+              onClick={() => setIsEditModalOpen(false)}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveEdit}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Save Changes
+            </button>
+          </div>
+        </div>
       </div>
-    </div>
+    )}
   </div>
-)}
-</div>
 
       {/* Add Program Head Modal */}
       {isModalOpen && (
@@ -1103,7 +1662,7 @@ function ProgramHead() {
               </select>
 
               <div className="flex justify-between mt-4">
-                <button type="button" className="bg-red-400 text-white px-4 py-2 rounded" onClick={() => setIsModalOpen(false)}>
+                <button type="button" className="px-4 py-2 border border-gray-300 rounded-lg bg-white-300 text-gray px-4 py-2 rounded" onClick={() => setIsModalOpen(false)}>
                   Cancel
                 </button>
                 <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">
@@ -1132,7 +1691,7 @@ function Subjects() {
   const fetchSubjects = () => {
     if (department && yearLevel && semester) {
       setLoading(true);
-      fetch(`/api/fetchSubjects?department=${department}&yearLevel=${yearLevel}&semester=${semester}`)
+      fetch(`/api/admin_subjects/fetchSubjects?department=${department}&yearLevel=${yearLevel}&semester=${semester}`)
         .then((res) => res.json())
         .then((data) => setSubjectList(data))
         .catch((err) => console.error("Error fetching subjects:", err))
@@ -1170,7 +1729,7 @@ function Subjects() {
     }
 
     try {
-      const response = await fetch("/api/addSubjects", {
+      const response = await fetch("/api/admin_subjects/addSubjects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

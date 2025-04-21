@@ -143,7 +143,7 @@ function Profile({ studentId }) {
   useEffect(() => {
     const fetchStudentProfile = async () => {
       try {
-        const res = await fetch(`/api/getStudentProfile?studentId=${studentId}`);
+        const res = await fetch(`/api/students_dashboard/getStudentProfile?studentId=${studentId}`);
         const data = await res.json();
         if (res.ok) setStudent(data);
         else console.error("Failed to fetch student profile:", data.error);
@@ -172,7 +172,7 @@ const handleUpload = async () => {
   formData.append("studentId", studentId);
 
   try {
-    const res = await fetch("/api/uploadProfileImage", {
+    const res = await fetch("/api/students_dashboard/uploadProfileImage", {
       method: "POST",
       body: formData,
     });
@@ -309,42 +309,76 @@ const handleUpload = async () => {
 }
 
 
+
+
 function Grades({ studentId }) {
   const [subjects, setSubjects] = useState([]);
   const [semester, setSemester] = useState("1st Semester");
+  const [course, setCourse] = useState("");
+  const [yearLevel, setYearLevel] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchSubjects = async () => {
+    const fetchStudentInfo = async () => {
       try {
-        const res = await fetch(
-          `/api/gettingSubjects?studentId=${studentId}&semester=${semester}`
-        );
+        const res = await fetch(`/api/students_dashboard/getStudentInfo?studentId=${studentId}`);
         const data = await res.json();
-
         if (res.ok) {
-          const updatedSubjects = data.map((subject) => ({
-            ...subject,
-            midterm: subject.midterm ?? "Pending",
-            final: subject.final ?? "Pending",
-            remarks:
-              subject.remarks ?? 
-              (subject.midterm === "Pending" || subject.final === "Pending"
-                ? "Pending"
-                : subject.midterm <= 3.0 && subject.final <= 3.0
-                ? "Passed"
-                : "Failed"),
-          }));
-          setSubjects(updatedSubjects);
+          setCourse(data.course);
+          setYearLevel(data.year_level);
         }
-      } catch (err) {
-        console.error("Failed to fetch subjects:", err);
+      } catch (error) {
+        console.error("Failed to fetch student info:", error);
       }
     };
 
-    fetchSubjects();
-  }, [studentId, semester]);
+    fetchStudentInfo();
+  }, [studentId]);
 
-  // Export to CSV function
+  useEffect(() => {
+    const fetchSubjects = async () => {
+      setIsLoading(true);
+      try {
+        // Fetch regular subjects
+        const res = await fetch(
+          `/api/students_dashboard/gettingSubjects?studentId=${studentId}&semester=${semester}`
+        );
+        const regularSubjects = await res.json();
+
+        // Fetch irregular subjects
+        const irrRes = await fetch(
+          `/api/students_dashboard/getIrregularSubjects?studentId=${studentId}&semester=${semester}`
+        );
+        const irregularSubjects = await irrRes.json();
+
+        // Combine both lists and process them
+        const allSubjects = [...regularSubjects, ...irregularSubjects].map((subject) => {
+          const hasGrades = subject.midterm !== null && subject.final !== null;
+          const isPassed = hasGrades && subject.midterm <= 3.0 && subject.final <= 3.0;
+          
+          return {
+            ...subject,
+            midterm: subject.midterm ?? "Pending",
+            final: subject.final ?? "Pending",
+            remarks: hasGrades 
+              ? (isPassed ? "Passed" : "Failed")
+              : "Pending",
+          };
+        });
+
+        setSubjects(allSubjects);
+      } catch (err) {
+        console.error("Failed to fetch subjects:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (course && yearLevel) {
+      fetchSubjects();
+    }
+  }, [studentId, semester, course, yearLevel]);
+
   const exportToCSV = () => {
     const csvContent = [
       ["Subject Code", "Subject Name", "Units", "Midterm", "Final", "Remarks"],
@@ -371,20 +405,19 @@ function Grades({ studentId }) {
     document.body.removeChild(link);
   };
 
-  // Color for Remarks Text
   const getRemarksStyle = (remarks) => {
-    if (remarks === "Passed") return "text-green-600 font-semibold";
-    if (remarks === "Failed") return "text-red-600 font-semibold";
-    return "text-yellow-600 font-semibold"; // "Pending"
+    switch (remarks) {
+      case "Passed": return "text-green-600 font-semibold";
+      case "Failed": return "text-red-600 font-semibold";
+      default: return "text-yellow-600 font-semibold"; // "Pending"
+    }
   };
 
   return (
     <div className="p-4 sm:p-6 bg-white mt-10 rounded-lg shadow-md">
       <h2 className="text-xl sm:text-2xl font-bold mb-4 text-center sm:text-left">Your Subjects</h2>
   
-      {/* Filter & Export Row */}
       <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-2 sm:gap-4">
-        {/* Semester Filter */}
         <select
           value={semester}
           onChange={(e) => setSemester(e.target.value)}
@@ -397,7 +430,6 @@ function Grades({ studentId }) {
           ))}
         </select>
   
-        {/* Export Button (aligned right) */}
         <button
           onClick={exportToCSV}
           className="bg-blue-500 text-white px-3 py-2 rounded-lg shadow-md hover:bg-blue-600 text-sm w-full sm:w-auto"
@@ -406,8 +438,11 @@ function Grades({ studentId }) {
         </button>
       </div>
   
-      {/* Subjects Table */}
-      {subjects.length > 0 ? (
+      {isLoading ? (
+        <div className="flex justify-center items-center h-40">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      ) : subjects.length > 0 ? (
         <div className="overflow-x-auto">
           <table className="w-full border-collapse border border-gray-300 shadow-md text-sm">
             <thead>
@@ -437,11 +472,12 @@ function Grades({ studentId }) {
           </table>
         </div>
       ) : (
-        <p className="text-gray-500 text-center mt-4">No subjects found for your department and year level.</p>
+        <p className="text-gray-500 text-center mt-4">No subjects found for this semester.</p>
       )}
     </div>
   );
 }
+
 
 
 function Help() {

@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model users {
+  id                         Int                         @id @default(autoincrement())
+  fullname                  String
+  email                     String                      @unique
+  username                  String                      @unique
+  password                  String
+  user_type                 UserType                    @default(user)
+  course                    String?
+  year_level                Int?
+  gender                    Gender?
+  birthdate                 DateTime?
+  contact_number            String?
+  address                   String?
+  status                    UserStatus                  @default(Active)
+  profile_img               String?
+  created_at                DateTime                    @default(now())
+  student_grades            student_grades[]
+  irregular_student_subjects irregular_student_subjects[]
+}
+
+model program_head {
+  id              Int          @id @default(autoincrement())
+  name            String
+  email           String       @unique
+  password        String
+  department      String
+  department_type DepartmentType
+  status          UserStatus   @default(Active)
+}
+
+model subjects {
+  subject_id                   Int                         @id @default(autoincrement())
+  department                   String
+  year_level                   String
+  semester                     String
+  subject_code                 String
+  subject_name                 String
+  units                        Int
+  student_grades               student_grades[]
+  irregular_student_subjects   irregular_student_subjects[]
+}
+
+model student_grades {
+  grade_id     Int      @id @default(autoincrement())
+  student_id   Int
+  subject_id   Int
+  midterm      Float?
+  final        Float?
+  remarks      String?
+  is_irregular Boolean   @default(false)
+
+  student users   @relation(fields: [student_id], references: [id])
+  subject subjects @relation(fields: [subject_id], references: [subject_id])
+}
+
+model irregular_student_subjects {
+  id          Int      @id @default(autoincrement())
+  student_id  Int
+  subject_id  Int
+  semester    String
+
+  student users   @relation(fields: [student_id], references: [id])
+  subject subjects @relation(fields: [subject_id], references: [subject_id])
+}
+
+enum UserType {
+  user
+  admin
+  programhead
+}
+
+enum Gender {
+  Male
+  Female
+  Other
+}
+
+enum UserStatus {
+  Active
+  Inactive
+}
+
+enum DepartmentType {
+  Academic
+  Non_Academic
+}

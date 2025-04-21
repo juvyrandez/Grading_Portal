@@ -220,31 +220,43 @@ function AddGrades() {
   // Fetch subjects based on Program Head's department, year level, and semester
   useEffect(() => {
     if (programHead && yearLevel && semester) {
-      fetch(`/api/getSubjects?department=${programHead.department}&yearLevel=${yearLevel}&semester=${semester}`)
+      fetch(`/api/ph_addgrades/getSubjects?department=${programHead.department}&yearLevel=${yearLevel}&semester=${semester}`)
         .then((res) => res.json())
         .then(setSubjects)
         .catch((err) => console.error("Error fetching subjects:", err));
     }
   }, [programHead, yearLevel, semester]);
 
-  // Fetch students after selecting a subject
+  // Fetch students enrolled in the selected subject (regular or irregular)
   useEffect(() => {
-    if (programHead && selectedSubject) {
-      fetch(`/api/filterStudents?department=${programHead.department}&yearLevel=${yearLevel}`)
+    if (programHead && selectedSubject && semester) {
+      setLoading(true);
+      
+      // Find the full subject details
+      const subject = subjects.find(sub => sub.subject_code === selectedSubject);
+      if (!subject) return;
+
+      // Fetch students enrolled in this subject
+      fetch(`/api/ph_addgrades/getEnrolledStudents?subjectId=${subject.subject_id}&semester=${semester}`)
         .then((res) => res.json())
         .then((data) => {
           setStudents(data);
 
           // Initialize grades for each student
           const initialGrades = data.reduce((acc, student) => {
-            acc[student.id] = { midterm: "", final: "" };
+            acc[student.id] = { 
+              midterm: student.midterm || "", 
+              final: student.final || "",
+              is_irregular: student.is_irregular || false
+            };
             return acc;
           }, {});
           setGrades(initialGrades);
         })
-        .catch((err) => console.error("Error fetching students:", err));
+        .catch((err) => console.error("Error fetching students:", err))
+        .finally(() => setLoading(false));
     }
-  }, [programHead, selectedSubject]);
+  }, [programHead, selectedSubject, semester, subjects]);
 
   // Handle grade input per student
   const handleGradeChange = (studentId, field, value) => {
@@ -257,7 +269,7 @@ function AddGrades() {
   // Submit grades to database
   const handleSubmitGrades = async () => {
     const filteredGrades = Object.entries(grades).reduce((acc, [studentId, grade]) => {
-      if (grade.midterm !== "" || grade.final !== "") acc[studentId] = grade; // Only keep filled grades
+      if (grade.midterm !== "" || grade.final !== "") acc[studentId] = grade;
       return acc;
     }, {});
 
@@ -269,11 +281,12 @@ function AddGrades() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/addGrades", {
+      const subject = subjects.find((sub) => sub.subject_code === selectedSubject);
+      const res = await fetch("/api/ph_addgrades/addGrades", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          subject: subjects.find((sub) => sub.subject_code === selectedSubject),
+          subject,
           semester,
           grades: filteredGrades,
         }),
@@ -283,7 +296,6 @@ function AddGrades() {
 
       if (res.ok) {
         Swal.fire("Success!", data.message || "Grades submitted successfully!", "success");
-        setGrades({});
       } else {
         Swal.fire("Error!", data.message || "Failed to submit grades.", "error");
       }
@@ -297,26 +309,34 @@ function AddGrades() {
 
   return (
     <div className="mt-4 p-4 bg-white rounded shadow">
-    <h2 className="text-lg font-bold mb-6">Add Grades by Subject</h2>
+      <h2 className="text-lg font-bold mb-6">Add Grades by Subject</h2>
 
-    {/* Show Department automatically */}
-    <div className="mb-6">
-      <label className="block font-semibold mb-2">Department:</label>
-      <div className="flex items-center gap-4 p-3 border rounded w-full bg-gray-100">
-        <FaGraduationCap className="text-blue-500 text-3xl" /> {/* Larger icon */}
-        <input
-          type="text"
-          value={programHead?.department || "Loading..."}
-          disabled
-          className="bg-gray-100 w-full outline-none"
-        />
+      {/* Show Department automatically */}
+      <div className="mb-6">
+        <label className="block font-semibold mb-2">Department:</label>
+        <div className="flex items-center gap-4 p-3 border rounded w-full bg-gray-100">
+          <FaGraduationCap className="text-blue-500 text-3xl" />
+          <input
+            type="text"
+            value={programHead?.department || "Loading..."}
+            disabled
+            className="bg-gray-100 w-full outline-none"
+          />
+        </div>
       </div>
-    </div>
 
-    
       {/* Year Level and Semester Select */}
       <div className="grid grid-cols-2 gap-4 mb-4">
-        <select value={yearLevel} onChange={(e) => setYearLevel(e.target.value)} className="p-2 border rounded">
+        <select 
+          value={yearLevel} 
+          onChange={(e) => {
+            setYearLevel(e.target.value);
+            setSelectedSubject("");
+            setStudents([]);
+            setGrades({});
+          }} 
+          className="p-2 border rounded"
+        >
           <option value="">Select Year Level</option>
           {["1st Year", "2nd Year", "3rd Year", "4th Year"].map((year) => (
             <option key={year} value={year}>
@@ -325,7 +345,16 @@ function AddGrades() {
           ))}
         </select>
 
-        <select value={semester} onChange={(e) => setSemester(e.target.value)} className="p-2 border rounded">
+        <select 
+          value={semester} 
+          onChange={(e) => {
+            setSemester(e.target.value);
+            setSelectedSubject("");
+            setStudents([]);
+            setGrades({});
+          }} 
+          className="p-2 border rounded"
+        >
           <option value="">Select Semester</option>
           {["1st Semester", "2nd Semester", "Summer"].map((sem) => (
             <option key={sem} value={sem}>
@@ -337,7 +366,11 @@ function AddGrades() {
 
       {/* Subject Select */}
       {subjects.length > 0 && (
-        <select value={selectedSubject} onChange={(e) => setSelectedSubject(e.target.value)} className="p-2 border rounded mb-4">
+        <select 
+          value={selectedSubject} 
+          onChange={(e) => setSelectedSubject(e.target.value)} 
+          className="p-2 border rounded mb-4 w-full"
+        >
           <option value="">Select Subject</option>
           {subjects.map((subject) => (
             <option key={subject.subject_id} value={subject.subject_code}>
@@ -345,6 +378,13 @@ function AddGrades() {
             </option>
           ))}
         </select>
+      )}
+
+      {/* Loading state */}
+      {loading && (
+        <div className="flex justify-center my-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        </div>
       )}
 
       {/* Student Grades Input Table */}
@@ -355,6 +395,7 @@ function AddGrades() {
             <thead>
               <tr className="bg-gray-100">
                 <th className="border p-2">Student Name</th>
+                <th className="border p-2">Status</th>
                 <th className="border p-2">Midterm</th>
                 <th className="border p-2">Final</th>
               </tr>
@@ -363,9 +404,23 @@ function AddGrades() {
               {students.map((student) => (
                 <tr key={student.id}>
                   <td className="border p-2">{student.fullname}</td>
+                  <td className="border p-2 text-center">
+                    {grades[student.id]?.is_irregular ? (
+                      <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">
+                        Irregular
+                      </span>
+                    ) : (
+                      <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+                        Regular
+                      </span>
+                    )}
+                  </td>
                   <td className="border p-2">
                     <input
                       type="number"
+                      min="1"
+                      max="5"
+                      step="0.01"
                       value={grades[student.id]?.midterm || ""}
                       onChange={(e) => handleGradeChange(student.id, "midterm", e.target.value)}
                       className="p-2 border rounded w-full"
@@ -374,6 +429,9 @@ function AddGrades() {
                   <td className="border p-2">
                     <input
                       type="number"
+                      min="1"
+                      max="5"
+                      step="0.01"
                       value={grades[student.id]?.final || ""}
                       onChange={(e) => handleGradeChange(student.id, "final", e.target.value)}
                       className="p-2 border rounded w-full"
@@ -418,7 +476,7 @@ function ProgramStudents({ year }) {
   // Fetch students by department and year
   const fetchStudents = async (department, year) => {
     try {
-      const response = await fetch(`/api/getStudents?department=${department}&year_level=${year}`);
+      const response = await fetch(`/api/ph_addgrades/getStudents?department=${department}&year_level=${year}`);
       const data = await response.json();
       if (data.students) setStudents(data.students);
     } catch (error) {
@@ -426,10 +484,10 @@ function ProgramStudents({ year }) {
     }
   };
 
-  // 🔍 Open view student modal
+  // Open view student modal
 const handleView = (student) => setViewedStudent(student);
 
-// ❌ Close the student view modal
+// Close the student view modal
 const closeViewModal = () => setViewedStudent(null);
 
 
