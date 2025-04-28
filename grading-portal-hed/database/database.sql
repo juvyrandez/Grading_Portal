@@ -67,7 +67,14 @@ CREATE TABLE irregular_student_subjects (
 );
 
 
-
+CREATE TABLE dropped_regular_subjects (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  student_id INT NOT NULL,
+  subject_id INT NOT NULL,
+  dropped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (student_id) REFERENCES users(id),
+  FOREIGN KEY (subject_id) REFERENCES subjects(subject_id)
+);
 
 
 

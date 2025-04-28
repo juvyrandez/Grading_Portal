@@ -339,20 +339,33 @@ function Grades({ studentId }) {
     const fetchSubjects = async () => {
       setIsLoading(true);
       try {
-        // Fetch regular subjects
-        const res = await fetch(
-          `/api/students_dashboard/gettingSubjects?studentId=${studentId}&semester=${semester}`
-        );
-        const regularSubjects = await res.json();
+        // Fetch all subjects data in parallel
+        const [regularRes, irregularRes, droppedRes] = await Promise.all([
+          fetch(`/api/students_dashboard/gettingSubjects?studentId=${studentId}&semester=${semester}`),
+          fetch(`/api/students_dashboard/getIrregularSubjects?studentId=${studentId}&semester=${semester}`),
+          fetch(`/api/students_dashboard/getDroppedSubjects?studentId=${studentId}`)
+        ]);
 
-        // Fetch irregular subjects
-        const irrRes = await fetch(
-          `/api/students_dashboard/getIrregularSubjects?studentId=${studentId}&semester=${semester}`
-        );
-        const irregularSubjects = await irrRes.json();
+        const regularSubjects = await regularRes.json();
+        const irregularSubjects = await irregularRes.json();
+        const droppedSubjects = await droppedRes.json();
 
-        // Combine both lists and process them
+        // Get list of dropped subject IDs
+        const droppedSubjectIds = droppedSubjects.map(sub => sub.subject_id);
+
+        // Process all subjects and mark dropped ones
         const allSubjects = [...regularSubjects, ...irregularSubjects].map((subject) => {
+          const isDropped = droppedSubjectIds.includes(subject.subject_id);
+          
+          if (isDropped) {
+            return {
+              ...subject,
+              midterm: "Dropped",
+              final: "Dropped",
+              remarks: "Dropped"
+            };
+          }
+
           const hasGrades = subject.midterm !== null && subject.final !== null;
           const isPassed = hasGrades && subject.midterm <= 3.0 && subject.final <= 3.0;
           
@@ -409,6 +422,7 @@ function Grades({ studentId }) {
     switch (remarks) {
       case "Passed": return "text-green-600 font-semibold";
       case "Failed": return "text-red-600 font-semibold";
+      case "Dropped": return "text-gray-500 font-semibold italic";
       default: return "text-yellow-600 font-semibold"; // "Pending"
     }
   };
@@ -457,7 +471,12 @@ function Grades({ studentId }) {
             </thead>
             <tbody>
               {subjects.map((subject) => (
-                <tr key={subject.subject_id} className="text-center text-xs sm:text-sm">
+                <tr 
+                  key={subject.subject_id} 
+                  className={`text-center text-xs sm:text-sm ${
+                    subject.remarks === "Dropped" ? "bg-gray-50" : ""
+                  }`}
+                >
                   <td className="border p-2 sm:p-3">{subject.subject_code}</td>
                   <td className="border p-2 sm:p-3">{subject.subject_name}</td>
                   <td className="border p-2 sm:p-3">{subject.units}</td>

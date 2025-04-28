@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import {FiLogOut, FiMenu, FiBell,FiSearch,FiPlus,FiEdit2,FiTrash2,FiEye,FiChevronLeft,FiChevronRight} from "react-icons/fi";
+import {FiLogOut, FiMenu, FiBell,FiSearch,FiPlus,FiEdit2,FiTrash2,FiEye,FiChevronLeft,FiChevronRight,FiAlertTriangle,FiX,FiBook,FiXCircle } from "react-icons/fi";
 import { MdDashboard } from "react-icons/md";
 import Swal from "sweetalert2";
 import { Bar } from "react-chartjs-2";
@@ -240,6 +240,7 @@ function Dashboard() {
 
 
 // STUDENTS
+
 function Students() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editFormData, setEditFormData] = useState({});
@@ -255,7 +256,7 @@ function Students() {
   const [currentPage, setCurrentPage] = useState(1);
   const studentsPerPage = 10;
   
-  // Irregular subjects state
+  // Subjects state
   const [irregularSubjects, setIrregularSubjects] = useState({
     available: [],
     assigned: []
@@ -279,9 +280,33 @@ function Students() {
     address: "",
   });
 
-  const handleView = (student) => {
+  // Enhanced handleView to fetch subjects data including dropped subjects
+  const handleView = async (student) => {
     setSelectedStudent(student);
-    setIsViewModalOpen(true);
+    
+    try {
+      const res = await fetch(`/api/students_dashboard/studentSubjects?studentId=${student.id}`);
+      const data = await res.json();
+      
+      // Filter out dropped subjects from regular subjects
+      const droppedSubjectIds = data.droppedRegularSubjects?.map(sub => sub.subject_id) || [];
+      const filteredRegularSubjects = data.regularSubjects?.filter(
+        subject => !droppedSubjectIds.includes(subject.subject_id)
+      ) || [];
+      
+      setSelectedStudent({
+        ...student,
+        regularSubjects: filteredRegularSubjects,
+        irregularSubjects: data.irregularSubjects || [],
+        droppedSubjects: data.droppedRegularSubjects || []
+      });
+      
+      setIsViewModalOpen(true);
+    } catch (error) {
+      console.error('Error fetching student subjects:', error);
+      setSelectedStudent(student);
+      setIsViewModalOpen(true);
+    }
   };
 
   const handleEdit = async (student) => {
@@ -386,6 +411,74 @@ function Students() {
         title: 'Error',
         text: 'Failed to remove irregular subject',
       });
+    }
+  };
+
+  // Handle dropping a subject (regular or irregular)
+  const handleDropSubject = async (subjectId, subjectType) => {
+    if (!selectedStudent?.id) return;
+  
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: `This will drop the ${subjectType} subject from the student`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, drop it!'
+    });
+  
+    if (result.isConfirmed) {
+      try {
+        let endpoint, method, body;
+  
+        if (subjectType === 'regular') {
+          endpoint = '/api/students_dashboard/dropRegularSubject';
+          method = 'POST';
+          body = {
+            student_id: selectedStudent.id,
+            subject_id: subjectId
+          };
+        } else {
+          endpoint = '/api/students_dashboard/irregularSubjects';
+          method = 'DELETE';
+          body = {
+            student_id: selectedStudent.id,
+            subject_id: subjectId
+          };
+        }
+  
+        const response = await fetch(endpoint, {
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
+        });
+  
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to drop subject');
+        }
+  
+        Swal.fire({
+          icon: 'success',
+          title: 'Subject Dropped',
+          text: `The ${subjectType} subject has been moved to dropped subjects`,
+          timer: 2000,
+          showConfirmButton: false
+        });
+        
+        // Refresh the student data
+        handleView(selectedStudent);
+      } catch (error) {
+        console.error(`Error dropping ${subjectType} subject:`, error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: error.message || `Failed to drop ${subjectType} subject`,
+        });
+      }
     }
   };
 
@@ -791,23 +884,189 @@ function Students() {
         </div>
       </div>
 
-      {/* View Student Modal */}
+      {/* Enhanced View Student Modal with Subjects */}
       {isViewModalOpen && selectedStudent && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-96">
-            <h2 className="text-lg font-semibold mb-4">Student Details</h2>
-            <p><strong>Full Name:</strong> {selectedStudent.fullname}</p>
-            <p><strong>Email:</strong> {selectedStudent.email}</p>
-            <p><strong>Username:</strong> {selectedStudent.username}</p>
-            <p><strong>Course:</strong> {selectedStudent.course}</p>
-            <p><strong>Year Level:</strong> {selectedStudent.year_level}</p>
-            <p><strong>Gender:</strong> {selectedStudent.gender}</p>
-            <p><strong>Birthdate:</strong> {selectedStudent.birthdate.split("T")[0]}</p>
-            <p><strong>Contact Number:</strong> {selectedStudent.contact_number}</p>
-            <p><strong>Address:</strong> {selectedStudent.address}</p>
-            <p><strong>Status:</strong> {selectedStudent.status}</p>
-            <div className="flex justify-end mt-4">
-              <button className="bg-gray-400 text-white px-4 py-2 rounded" onClick={() => setIsViewModalOpen(false)}>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-6 border-b">
+              <h2 className="text-xl font-semibold">Student Details</h2>
+              <button 
+                onClick={() => setIsViewModalOpen(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <FiX className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
+              {/* Personal Info Column */}
+              <div className="space-y-6">
+                <div>
+                  <h3 className="font-medium text-lg mb-4">Personal Information</h3>
+                  <div className="space-y-3">
+                    <p><strong>Full Name:</strong> {selectedStudent.fullname}</p>
+                    <p><strong>Email:</strong> {selectedStudent.email}</p>
+                    <p><strong>Username:</strong> {selectedStudent.username}</p>
+                    <p><strong>Course:</strong> {selectedStudent.course}</p>
+                    <p><strong>Year Level:</strong> {selectedStudent.year_level}</p>
+                    <p><strong>Gender:</strong> {selectedStudent.gender}</p>
+                    <p><strong>Birthdate:</strong> {selectedStudent.birthdate?.split("T")[0]}</p>
+                    <p><strong>Contact Number:</strong> {selectedStudent.contact_number}</p>
+                    <p><strong>Address:</strong> {selectedStudent.address}</p>
+                    <p>
+                      <strong>Status:</strong> 
+                      <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
+                        selectedStudent.status === 'Active' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {selectedStudent.status}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Subjects Column */}
+              <div className="space-y-6">
+                <h3 className="font-medium text-lg">Subjects</h3>
+                
+                {/* Regular Subjects */}
+                <div>
+                  <h4 className="font-medium mb-3 flex items-center">
+                    <FiBook className="mr-2" /> Regular Subjects
+                    <span className="ml-auto text-sm text-gray-500">
+                      {selectedStudent.course} - Year {selectedStudent.year_level}
+                    </span>
+                  </h4>
+                  
+                  {selectedStudent.regularSubjects && selectedStudent.regularSubjects.length > 0 ? (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Code</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Subject</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Units</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Semester</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {selectedStudent.regularSubjects.map((subject) => (
+                            <tr key={subject.subject_id}>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm">{subject.subject_code}</td>
+                              <td className="px-4 py-2 text-sm">{subject.subject_name}</td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm">{subject.units}</td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm">{subject.semester}</td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm">
+                                <button
+                                  onClick={() => handleDropSubject(subject.subject_id, 'regular')}
+                                  className="text-red-500 hover:text-red-700"
+                                  title="Drop subject"
+                                >
+                                  <FiTrash2 className="w-4 h-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-sm">No active regular subjects for this student</p>
+                  )}
+                </div>
+                
+                {/* Irregular Subjects */}
+                <div>
+                  <h4 className="font-medium mb-3 flex items-center">
+                    <FiAlertTriangle className="mr-2" /> Irregular Subjects
+                  </h4>
+                  
+                  {selectedStudent.irregularSubjects && selectedStudent.irregularSubjects.length > 0 ? (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Code</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Subject</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Units</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Semester</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {selectedStudent.irregularSubjects.map((subject) => (
+                            <tr key={`irregular-${subject.subject_id}`}>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm">{subject.subject_code}</td>
+                              <td className="px-4 py-2 text-sm">{subject.subject_name}</td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm">{subject.units}</td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm">{subject.semester}</td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm">
+                                <button
+                                  onClick={() => handleDropSubject(subject.subject_id, 'irregular')}
+                                  className="text-red-500 hover:text-red-700"
+                                  title="Remove subject"
+                                >
+                                  <FiTrash2 className="w-4 h-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-sm">No irregular subjects assigned to this student</p>
+                  )}
+                </div>
+
+                {/* Dropped Subjects */}
+                <div>
+                  <h4 className="font-medium mb-3 flex items-center">
+                    <FiXCircle className="mr-2" /> Dropped Subjects
+                  </h4>
+                  
+                  {selectedStudent.droppedSubjects && selectedStudent.droppedSubjects.length > 0 ? (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Code</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Subject</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Units</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Semester</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Dropped On</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {selectedStudent.droppedSubjects.map((subject) => (
+                            <tr key={`dropped-${subject.subject_id}`}>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm">{subject.subject_code}</td>
+                              <td className="px-4 py-2 text-sm">{subject.subject_name}</td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm">{subject.units}</td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm">{subject.semester}</td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm">
+                                {new Date(subject.dropped_at).toLocaleDateString()}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-sm">No dropped subjects</p>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end p-6 border-t">
+              <button 
+                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                onClick={() => setIsViewModalOpen(false)}
+              >
                 Close
               </button>
             </div>
@@ -1060,205 +1319,204 @@ function Students() {
       )}
 
       {/* Add Student Modal */}
-{isModalOpen && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4">
-    <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl"> {/* Increased max width */}
-      <div className="p-6">
-        <h2 className="text-2xl font-bold mb-6 text-center">Add New Student</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6"> {/* Two-column grid */}
-            
-            {/* Column 1 */}
-            <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-4"> {/* Name fields in 3 columns */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">First Name*</label>
-                  <input 
-                    type="text" 
-                    name="first_name" 
-                    placeholder="First Name" 
-                    required 
-                    className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    onChange={handleChange} 
-                  />
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl">
+            <div className="p-6">
+              <h2 className="text-2xl font-bold mb-6 text-center">Add New Student</h2>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  
+                  {/* Column 1 */}
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">First Name*</label>
+                        <input 
+                          type="text" 
+                          name="first_name" 
+                          placeholder="First Name" 
+                          required 
+                          className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          onChange={handleChange} 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
+                        <input 
+                          type="text" 
+                          name="middle_name" 
+                          placeholder="Middle Name" 
+                          className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          onChange={handleChange} 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Last Name*</label>
+                        <input 
+                          type="text" 
+                          name="last_name" 
+                          placeholder="Last Name" 
+                          required 
+                          className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          onChange={handleChange} 
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Email*</label>
+                      <input 
+                        type="email" 
+                        name="email" 
+                        placeholder="student@example.com" 
+                        required 
+                        className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        onChange={handleChange} 
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Username*</label>
+                      <input 
+                        type="text" 
+                        name="username" 
+                        placeholder="Username" 
+                        required 
+                        className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        onChange={handleChange} 
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Password*</label>
+                      <input 
+                        type="password" 
+                        name="password" 
+                        placeholder="••••••••" 
+                        required 
+                        className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        onChange={handleChange} 
+                      />
+                    </div>
+                  </div>
+
+                  {/* Column 2 */}
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Course*</label>
+                        <select 
+                          name="course" 
+                          required 
+                          className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          onChange={handleChange}
+                        >
+                          <option value="">Select Course</option>
+                          <option value="BSIT">BSIT</option>
+                          <option value="CJEP">CJEP</option>
+                          <option value="BSBA">BSBA</option>
+                          <option value="TEP">TEP</option>
+                          <option value="HM">HM</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Year Level*</label>
+                        <select 
+                          name="year_level" 
+                          required 
+                          className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          onChange={handleChange}
+                        >
+                          <option value="">Select Year</option>
+                          <option value="1">1st Year</option>
+                          <option value="2">2nd Year</option>
+                          <option value="3">3rd Year</option>
+                          <option value="4">4th Year</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Gender*</label>
+                        <select 
+                          name="gender" 
+                          required 
+                          className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          onChange={handleChange}
+                        >
+                          <option value="">Select Gender</option>
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Birthdate*</label>
+                        <input 
+                          type="date" 
+                          name="birthdate" 
+                          required 
+                          className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          onChange={handleChange} 
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number*</label>
+                      <input
+                        type="text"
+                        name="contact_number"
+                        placeholder="09XXXXXXXXX"
+                        className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.contact_number || ""}
+                        onChange={handleContactNumberChange}
+                      />
+                      {formData.contact_number && formData.contact_number.length !== 11 && (
+                        <span className="text-red-500 text-xs mt-1">Contact number must be 11 digits</span>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Address*</label>
+                      <textarea 
+                        name="address" 
+                        placeholder="Full address" 
+                        rows="3"
+                        className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        onChange={handleChange}
+                      ></textarea>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
-                  <input 
-                    type="text" 
-                    name="middle_name" 
-                    placeholder="Middle Name" 
-                    className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    onChange={handleChange} 
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name*</label>
-                  <input 
-                    type="text" 
-                    name="last_name" 
-                    placeholder="Last Name" 
-                    required 
-                    className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    onChange={handleChange} 
-                  />
-                </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email*</label>
-                <input 
-                  type="email" 
-                  name="email" 
-                  placeholder="student@example.com" 
-                  required 
-                  className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  onChange={handleChange} 
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Username*</label>
-                <input 
-                  type="text" 
-                  name="username" 
-                  placeholder="Username" 
-                  required 
-                  className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  onChange={handleChange} 
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Password*</label>
-                <input 
-                  type="password" 
-                  name="password" 
-                  placeholder="••••••••" 
-                  required 
-                  className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  onChange={handleChange} 
-                />
-              </div>
-            </div>
-
-            {/* Column 2 */}
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Course*</label>
-                  <select 
-                    name="course" 
-                    required 
-                    className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    onChange={handleChange}
+                <div className="flex justify-end space-x-4 pt-4">
+                  <button 
+                    type="button" 
+                    className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+                    onClick={() => setIsModalOpen(false)}
                   >
-                    <option value="">Select Course</option>
-                    <option value="BSIT">BSIT</option>
-                    <option value="CJEP">CJEP</option>
-                    <option value="BSBA">BSBA</option>
-                    <option value="TEP">TEP</option>
-                    <option value="HM">HM</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Year Level*</label>
-                  <select 
-                    name="year_level" 
-                    required 
-                    className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    onChange={handleChange}
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   >
-                    <option value="">Select Year</option>
-                    <option value="1">1st Year</option>
-                    <option value="2">2nd Year</option>
-                    <option value="3">3rd Year</option>
-                    <option value="4">4th Year</option>
-                  </select>
+                    Add Student
+                  </button>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Gender*</label>
-                  <select 
-                    name="gender" 
-                    required 
-                    className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    onChange={handleChange}
-                  >
-                    <option value="">Select Gender</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Birthdate*</label>
-                  <input 
-                    type="date" 
-                    name="birthdate" 
-                    required 
-                    className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    onChange={handleChange} 
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number*</label>
-                <input
-                  type="text"
-                  name="contact_number"
-                  placeholder="09XXXXXXXXX"
-                  className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  value={formData.contact_number || ""}
-                  onChange={handleContactNumberChange}
-                />
-                {formData.contact_number && formData.contact_number.length !== 11 && (
-                  <span className="text-red-500 text-xs mt-1">Contact number must be 11 digits</span>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Address*</label>
-                <textarea 
-                  name="address" 
-                  placeholder="Full address" 
-                  rows="3"
-                  className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  onChange={handleChange}
-                ></textarea>
-              </div>
+              </form>
             </div>
           </div>
-
-          <div className="flex justify-end space-x-4 pt-4">
-            <button 
-              type="button" 
-              className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
-              onClick={() => setIsModalOpen(false)}
-            >
-              Cancel
-            </button>
-            <button 
-              type="submit" 
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Add Student
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-)}
+        </div>
+      )}
     </div>
   );
 }
-
 
 
 

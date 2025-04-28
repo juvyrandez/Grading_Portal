@@ -461,8 +461,8 @@ function ProgramStudents({ year }) {
   const [students, setStudents] = useState([]);
   const [programHead, setProgramHead] = useState(null);
   const [viewedStudent, setViewedStudent] = useState(null);
-  
-  
+  const [isLoading, setIsLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Load user data on mount
   useEffect(() => {
@@ -475,87 +475,258 @@ function ProgramStudents({ year }) {
 
   // Fetch students by department and year
   const fetchStudents = async (department, year) => {
+    setIsLoading(true);
     try {
       const response = await fetch(`/api/ph_addgrades/getStudents?department=${department}&year_level=${year}`);
       const data = await response.json();
       if (data.students) setStudents(data.students);
     } catch (error) {
       console.error("Failed to fetch students:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  // Filter students based on search term
+  const filteredStudents = students.filter(student =>
+    student.fullname.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    student.course.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   // Open view student modal
-const handleView = (student) => setViewedStudent(student);
+  const handleView = (student) => setViewedStudent(student);
 
-// Close the student view modal
-const closeViewModal = () => setViewedStudent(null);
+  // Close the student view modal
+  const closeViewModal = () => setViewedStudent(null);
 
+  return (
+    <div className="mt-4 p-10 h-screen bg-white rounded shadow">
+      <div className="mb-6">
+        <h2 className="text-xl font-bold text-gray-800">
+          Student Management
+        </h2>
+        <p className="text-sm text-gray-600">
+          {programHead?.department ? `${programHead.department} students` : "Department students"}
+        </p>
+      </div>
 
-return (
-  <div>
-  <h3 className="font-bold mt-4 p-2 bg-white rounded shadow">
-    Students in {programHead?.department || "your department"}
-  </h3>
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gray-50 border-b">
+          <div>
+            <h3 className="font-medium text-gray-800">
+              Year {year} Students
+            </h3>
+            <p className="text-xs text-gray-500">
+              {students.length} total students
+            </p>
+          </div>
+          <div className="w-full sm:w-64">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search students..."
+                className="w-full pl-8 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              <svg
+                className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
+          </div>
+        </div>
 
-    {students.length > 0 ? (
-      <table className="w-full border-collapse border border-gray-300 mt-4">
-        <thead className="bg-sky-800 text-white">
-          <tr>
-            <th className="border p-2">Full Name</th>
-            <th className="border p-2">Email</th>
-            <th className="border p-2">Year Level</th>
-            <th className="border p-2">Course</th>
-            <th className="border p-2">Status</th>
-            <th className="border p-2">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {students.map((student) => (
-            <tr key={student.id} className="hover:bg-sky-200 transition">
-              <td className="border p-2">{student.fullname}</td>
-              <td className="border p-2">{student.email}</td>
-              <td className="border p-2">{student.year_level}</td>
-              <td className="border p-2">{student.course}</td>
-              <td className="border p-2">{student.status}</td>
-              <td className="border p-2 flex gap-2 justify-center">
-  <button
-    className="text-blue-500 hover:text-green-600"
-    onClick={() => handleView(student)}
-  >
-    <FaEye className="w-5 h-5" />
-  </button>
-</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    ) : (
-      <p className="text-gray-500">No students found for this year level.</p>
-    )}
+        {isLoading ? (
+          <div className="p-8 flex justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        ) : filteredStudents.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Student
+                  </th>
+                  <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Contact
+                  </th>
+                  <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Year & Course
+                  </th>
+                  <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredStudents.map((student) => (
+                  <tr key={student.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-blue-600 text-sm font-medium">
+                            {student.fullname.charAt(0)}
+                          </span>
+                        </div>
+                        <div className="ml-3">
+                          <div className="text-sm font-medium text-gray-900">
+                            {student.fullname}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {student.email}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                      {student.contact_number || "-"}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        Year {student.year_level}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {student.course}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className={`px-2 py-0.5 inline-flex text-xs font-medium rounded 
+                        ${student.status === 'Active' ? 'bg-green-100 text-green-800' : 
+                          student.status === 'Inactive' ? 'bg-red-100 text-red-800' : 
+                          'bg-yellow-100 text-yellow-800'}`}>
+                        {student.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
+                      <button
+                        onClick={() => handleView(student)}
+                        className="text-blue-600 hover:text-blue-800"
+                        title="View details"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="p-6 text-center">
+            <svg
+              className="mx-auto h-10 w-10 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1}
+                d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+              />
+            </svg>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">
+              {searchTerm ? 'No matching students found' : 'No students found'}
+            </h3>
+            <p className="mt-1 text-xs text-gray-500">
+              {searchTerm ? 'Try adjusting your search' : 'No students registered in this year level'}
+            </p>
+          </div>
+        )}
+      </div>
 
-
-      {/* 🎉 View Student Modal */}
-{viewedStudent && (
-  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-    <div className="bg-white p-6 rounded shadow-lg w-96">
-      <h2 className="text-xl font-bold mb-2">Student Details</h2>
-      <p><strong>Full Name:</strong> {viewedStudent.fullname}</p>
-      <p><strong>Email:</strong> {viewedStudent.email}</p>
-      <p><strong>Year Level:</strong> {viewedStudent.year_level}</p>
-      <p><strong>Course:</strong> {viewedStudent.course}</p>
-      <p><strong>Status:</strong> {viewedStudent.status}</p>
-      <p><strong>Contact:</strong> {viewedStudent.contact_number || "N/A"}</p>
-      <p><strong>Address:</strong> {viewedStudent.address || "N/A"}</p>
-
-      <button
-        className="mt-4 bg-gray-400 hover:bg-red-600 text-white py-1 px-3 rounded"
-        onClick={closeViewModal}
-      >
-        Close
-      </button>
-    </div>
-  </div>
-)}
+      {/* Student Details Modal */}
+      {viewedStudent && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+              <div className="absolute inset-0 bg-gray-500 opacity-75" onClick={closeViewModal}></div>
+            </div>
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6">
+                <div className="sm:flex sm:items-start">
+                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-full bg-blue-100">
+                    <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                    <h3 className="text-base font-medium text-gray-900">
+                      Student Profile
+                    </h3>
+                    <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <div>
+                        <p className="text-xs text-gray-500">Full Name</p>
+                        <p className="text-sm text-gray-900">{viewedStudent.fullname}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Email</p>
+                        <p className="text-sm text-gray-900">{viewedStudent.email}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Year Level</p>
+                        <p className="text-sm text-gray-900">Year {viewedStudent.year_level}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Course</p>
+                        <p className="text-sm text-gray-900">{viewedStudent.course}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Status</p>
+                        <p className="text-sm">
+                          <span className={`px-2 py-0.5 inline-flex text-xs font-medium rounded 
+                            ${viewedStudent.status === 'Active' ? 'bg-green-100 text-green-800' : 
+                              viewedStudent.status === 'Inactive' ? 'bg-red-100 text-red-800' : 
+                              'bg-yellow-100 text-yellow-800'}`}>
+                            {viewedStudent.status}
+                          </span>
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Contact</p>
+                        <p className="text-sm text-gray-900">{viewedStudent.contact_number || "-"}</p>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <p className="text-xs text-gray-500">Address</p>
+                        <p className="text-sm text-gray-900">{viewedStudent.address || "-"}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-3 py-2 bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-500 sm:ml-3 sm:w-auto"
+                  onClick={closeViewModal}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
