@@ -178,46 +178,26 @@ function SidebarItem({ icon: Icon, label, activeTab, setActiveTab, isSidebarOpen
 
 // Components for different tabs
 function Dashboard() {
-  // Mock data - would normally come from backend
+  // Mock data for stats
   const mockData = {
     studentStats: {
-      total: 243,
-      active: 218,
-      onLeave: 15,
-      graduating: 32
-    },
-    recentAnnouncements: [
-      { id: 1, title: "Curriculum Review Meeting", date: "2023-05-15", content: "Please prepare for the quarterly curriculum review meeting next week." },
-      { id: 2, title: "Student Feedback Results", date: "2023-05-10", content: "The latest student feedback reports are now available for review." }
-    ],
-    upcomingEvents: [
-      { id: 1, title: "Faculty Meeting", date: "2023-05-20", time: "2:00 PM" },
-      { id: 2, title: "Industry Advisory Board", date: "2023-05-25", time: "9:00 AM" },
-      { id: 3, title: "Graduation Ceremony", date: "2023-06-10", time: "10:00 AM" }
-    ],
-    quickLinks: [
-      { name: "Curriculum Docs", url: "#", icon: "📚" },
-      { name: "Faculty Portal", url: "#", icon: "👨‍🏫" },
-      { name: "Student Records", url: "#", icon: "📊" },
-      { name: "Assessment Tools", url: "#", icon: "📝" }
-    ]
+      total: 14,
+      active: 4
+    }
   };
 
   return (
-    <div className="mt-4 p-4 bg-gray rounded shadow">
+    <div className="mt-4 p-4 bg-gray-50 rounded shadow">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Program Head Dashboard</h1>
           <p className="text-gray-600">Welcome back! Here's what's happening today.</p>
         </div>
-        <div className="bg-blue-100 text-blue-800 px-4 py-2 rounded-lg">
-          <span className="font-medium">May 17, 2023</span>
-        </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <StatCard 
           title="Total Students" 
           value={mockData.studentStats.total} 
@@ -230,96 +210,23 @@ function Dashboard() {
           icon="✅" 
           trend="up" 
         />
-        <StatCard 
-          title="On Leave" 
-          value={mockData.studentStats.onLeave} 
-          icon="⏸️" 
-          trend="down" 
-        />
-        <StatCard 
-          title="Graduating Soon" 
-          value={mockData.studentStats.graduating} 
-          icon="🎓" 
-          trend="up" 
-        />
       </div>
 
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Announcements */}
-          <div className="bg-white p-4 rounded-lg shadow">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800">Recent Announcements</h2>
-            <div className="space-y-4">
-              {mockData.recentAnnouncements.map(announcement => (
-                <AnnouncementCard key={announcement.id} {...announcement} />
-              ))}
-            </div>
-          </div>
-
-          {/* Calendar Section */}
-          <div className="bg-white p-4 rounded-lg shadow">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800">Upcoming Events</h2>
-            <div className="space-y-3">
-              {mockData.upcomingEvents.map(event => (
-                <EventCard key={event.id} {...event} />
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column */}
-        <div className="space-y-6">
-          {/* Quick Links */}
-          <div className="bg-white p-4 rounded-lg shadow">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800">Quick Links</h2>
-            <div className="grid grid-cols-2 gap-3">
-              {mockData.quickLinks.map((link, index) => (
-                <QuickLink key={index} {...link} />
-              ))}
-            </div>
-          </div>
-
-          {/* Inspiration */}
-          <div className="bg-white p-4 rounded-lg shadow">
-            <h2 className="text-xl font-semibold mb-2 text-gray-800">Daily Inspiration</h2>
-            <div className="bg-blue-50 p-3 rounded">
-              <p className="italic text-gray-700">
-                "Education is the most powerful weapon which you can use to change the world."
-                <span className="block text-right text-sm mt-2">— Nelson Mandela</span>
-              </p>
-            </div>
-          </div>
-
-          {/* Recent Activity */}
-          <div className="bg-white p-4 rounded-lg shadow">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800">Recent Activity</h2>
-            <div className="space-y-3">
-              <ActivityItem 
-                icon="📝" 
-                text="Approved 5 student petitions" 
-                time="2 hours ago" 
-              />
-              <ActivityItem 
-                icon="👨‍🎓" 
-                text="Met with 3 advisees" 
-                time="Yesterday" 
-              />
-              <ActivityItem 
-                icon="📅" 
-                text="Scheduled faculty meeting" 
-                time="May 15" 
-              />
-            </div>
-          </div>
+      {/* Daily Inspiration */}
+      <div className="bg-white p-4 rounded-lg shadow">
+        <h2 className="text-xl font-semibold mb-2 text-gray-800">Daily Inspiration</h2>
+        <div className="bg-blue-50 p-3 rounded">
+          <p className="italic text-gray-700">
+            "Education is the most powerful weapon which you can use to change the world."
+            <span className="block text-right text-sm mt-2">— Nelson Mandela</span>
+          </p>
         </div>
       </div>
     </div>
   );
 }
 
-// Component for stat cards
+// Component for stat cards (unchanged)
 function StatCard({ title, value, icon, trend }) {
   const trendColors = {
     up: "text-green-500",
@@ -344,58 +251,6 @@ function StatCard({ title, value, icon, trend }) {
       </div>
       <div className={`mt-2 text-sm ${trendColors[trend]}`}>
         {trendIcons[trend]} {trend === 'up' ? 'Increased' : trend === 'down' ? 'Decreased' : 'No change'} from last month
-      </div>
-    </div>
-  );
-}
-
-// Component for announcement cards
-function AnnouncementCard({ title, date, content }) {
-  return (
-    <div className="border-b pb-3 last:border-b-0 last:pb-0">
-      <div className="flex justify-between items-start mb-1">
-        <h3 className="font-medium text-gray-800">{title}</h3>
-        <span className="text-sm text-gray-500">{new Date(date).toLocaleDateString()}</span>
-      </div>
-      <p className="text-gray-600 text-sm">{content}</p>
-    </div>
-  );
-}
-
-// Component for event cards
-function EventCard({ title, date, time }) {
-  return (
-    <div className="flex items-center p-2 hover:bg-gray-50 rounded">
-      <div className="bg-blue-100 text-blue-800 rounded-lg p-2 mr-3 text-center min-w-[50px]">
-        <div className="font-bold">{new Date(date).getDate()}</div>
-        <div className="text-xs">{new Date(date).toLocaleString('default', { month: 'short' })}</div>
-      </div>
-      <div>
-        <h3 className="font-medium text-gray-800">{title}</h3>
-        <p className="text-sm text-gray-500">{time}</p>
-      </div>
-    </div>
-  );
-}
-
-// Component for quick links
-function QuickLink({ name, url, icon }) {
-  return (
-    <a href={url} className="flex flex-col items-center justify-center p-3 border rounded-lg hover:bg-gray-50 transition-colors">
-      <span className="text-2xl mb-1">{icon}</span>
-      <span className="text-sm text-center">{name}</span>
-    </a>
-  );
-}
-
-// Component for activity items
-function ActivityItem({ icon, text, time }) {
-  return (
-    <div className="flex items-start">
-      <span className="text-lg mr-2">{icon}</span>
-      <div>
-        <p className="text-gray-800">{text}</p>
-        <p className="text-xs text-gray-500">{time}</p>
       </div>
     </div>
   );
