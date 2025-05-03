@@ -6,6 +6,7 @@ import { FiUser } from "react-icons/fi";
 import ScrollToTop from "../components/ScrollToTop";
 import "@fontsource/poppins";
 import { FaUserCircle } from "react-icons/fa";
+import { FaUser } from 'react-icons/fa';
 
 
 export default function Home() {
@@ -70,14 +71,11 @@ export default function Home() {
             ) : (
               // Show Login/Signup if not logged in
               <>
-                <Link href="/login_form" className="hover:underline">
-                  Log In
-                </Link>
-                <span className="px-2">|</span>
-                <Link href="/signup_form" className="hover:underline">
-                  Sign Up
-                </Link>
-              </>
+  <Link href="/login_form" className="hover:underline flex items-center gap-1">
+    <FaUser className="text-sm" />
+    Log In
+  </Link>
+</>
             )}
           </div>
 

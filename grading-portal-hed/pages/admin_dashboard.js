@@ -15,7 +15,6 @@ import { FaHandsHelping } from "react-icons/fa";
 import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from "chart.js";
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
-
 export default function AdminDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState("Dashboard");
@@ -28,7 +27,7 @@ export default function AdminDashboard() {
     if (userData && userData.user_type === "admin") {
       setAdmin(userData);
     } else {
-      router.push("/login");
+      router.push("/login_form"); // Redirect to login form if not authenticated
     }
   }, [router]);
 
@@ -51,7 +50,6 @@ export default function AdminDashboard() {
           showConfirmButton: false,
           timer: 2000,
         });
-  
         router.push("/login_form");
       }
     });
@@ -84,11 +82,6 @@ export default function AdminDashboard() {
         <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-md">
           <h2 className="text-xl font-bold">{activeTab}</h2>
           <div className="flex items-center gap-5">
-            {/* Notification Bell */}
-            <button className="relative p-2 rounded-full hover:bg-gray-200 transition">
-              <FiBell size={24} />
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1 rounded-full">3</span>
-            </button>
 
             {/* Admin Profile Dropdown */}
 <div className="relative">
@@ -170,23 +163,29 @@ function Dashboard() {
   }, []);
 
   // Chart Data
-  const chartData = {
-    labels: ["BSIT", "CJEP", "BSBA", "TEP", "HM"],
-    datasets: [
-      {
-        label: "Students per Department",
-        data: [
-          departmentCounts.BSIT,
-          departmentCounts.CJEP,
-          departmentCounts.BSBA,
-          departmentCounts.TEP,
-          departmentCounts.HM,
-        ],
-        backgroundColor: ["#4CAF50", "#FF9800", "#03A9F4", "#E91E63", "#9C27B0"],
-        borderRadius: 5,
-      },
-    ],
-  };
+const chartData = {
+  labels: ["BSIT", "CJEP", "BSBA", "TEP", "HM"],
+  datasets: [
+    {
+      label: "Students per Department",
+      data: [
+        departmentCounts.BSIT,
+        departmentCounts.CJEP,
+        departmentCounts.BSBA,
+        departmentCounts.TEP,
+        departmentCounts.HM,
+      ],
+      backgroundColor: [
+        "#800000", // Maroon for BSIT
+        "#03A9F4", // Blue for CJEP (assuming CTEP is same as CJEP)
+        "#FFC107", // Yellow for BSBA
+        "#64B5F6", // Light blue for TEP (not too dark)
+        "#4CAF50", // Green for HM
+      ],
+      borderRadius: 5,
+    },
+  ],
+};
 
   // Chart Options to resize and prevent it from being too long
   const chartOptions = {
@@ -1331,7 +1330,7 @@ function Students() {
                   <div className="space-y-4">
                     <div className="grid grid-cols-3 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">First Name*</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
                         <input 
                           type="text" 
                           name="first_name" 
@@ -1352,7 +1351,7 @@ function Students() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Last Name*</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
                         <input 
                           type="text" 
                           name="last_name" 
@@ -1365,7 +1364,7 @@ function Students() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Email*</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                       <input 
                         type="email" 
                         name="email" 
@@ -1377,7 +1376,7 @@ function Students() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Username*</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
                       <input 
                         type="text" 
                         name="username" 
@@ -1389,7 +1388,7 @@ function Students() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Password*</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
                       <input 
                         type="password" 
                         name="password" 
@@ -1405,7 +1404,7 @@ function Students() {
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Course*</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Course</label>
                         <select 
                           name="course" 
                           required 
@@ -1422,7 +1421,7 @@ function Students() {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Year Level*</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Year Level</label>
                         <select 
                           name="year_level" 
                           required 
@@ -1440,7 +1439,7 @@ function Students() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Gender*</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Sex</label>
                         <select 
                           name="gender" 
                           required 
@@ -1455,7 +1454,7 @@ function Students() {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Birthdate*</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Birthdate</label>
                         <input 
                           type="date" 
                           name="birthdate" 
@@ -1467,7 +1466,7 @@ function Students() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number*</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
                       <input
                         type="text"
                         name="contact_number"
@@ -1482,7 +1481,7 @@ function Students() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Address*</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
                       <textarea 
                         name="address" 
                         placeholder="Full address" 
@@ -1573,7 +1572,7 @@ function ProgramHead() {
         });
   
         setIsModalOpen(false);
-        fetchProgramHeads(); // Refresh data
+        fetchProgramHeads(); 
       } else {
         Swal.fire({
           icon: "error",

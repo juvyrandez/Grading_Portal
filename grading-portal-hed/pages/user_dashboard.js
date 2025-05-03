@@ -20,33 +20,41 @@ export default function UserDashboard() {
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      const userData = JSON.parse(storedUser);
+      // Check if user exists and has appropriate user_type (assuming 'user' or similar)
+      if (userData && (userData.user_type === "user" || userData.user_type === "student")) {
+        setUser(userData);
+      } else {
+        router.push("/login_form");
+      }
+    } else {
+      router.push("/login_form");
     }
-  }, []);
+  }, [router]);
 
   const handleLogout = () => {
-      Swal.fire({
-        title: "Are you sure?",
-        text: "You will be logged out!",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "#d33",
-        cancelButtonColor: "#3085d6",
-        confirmButtonText: "Yes, logout!",
-      }).then((result) => {
-        if (result.isConfirmed) {
-          localStorage.removeItem("user");
-          Swal.fire({
-            icon: "success",
-            title: "Logged out!",
-            text: "You've been successfully logged out.",
-            showConfirmButton: false,
-            timer: 2000,
-          });
-          router.push("/");
-        }
-      });
-    };
+    Swal.fire({
+      title: "Are you sure?",
+      text: "You will be logged out!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Yes, logout!",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        localStorage.removeItem("user");
+        Swal.fire({
+          icon: "success",
+          title: "Logged out!",
+          text: "You've been successfully logged out.",
+          showConfirmButton: false,
+          timer: 2000,
+        });
+        router.push("/login_form");
+      }
+    });
+  };
 
   return (
     <div className="flex min-h-screen h-[100vh] font-poppins bg-gray-100 overflow-hidden">
@@ -83,12 +91,6 @@ export default function UserDashboard() {
   <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-md">
     <h2 className="text-xl font-bold">{activeTab}</h2>
     <div className="flex items-center gap-5">
-      {/* Notification Bell */}
-      <button className="relative p-2 rounded-full hover:bg-gray-200 transition">
-        <FiBell size={24} />
-        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1 rounded-full">3</span>
-      </button>
-
       {/* Profile Dropdown */}
 <div className="relative">
   <button className="flex items-center gap-3" onClick={() => setDropdownOpen(!dropdownOpen)}>
@@ -543,7 +545,7 @@ function Help() {
         />
         <AccordionItem index={1} openIndex={openIndex} title="How to update personal info?" toggleAccordion={toggleAccordion} />
         <AccordionItem index={2} openIndex={openIndex} title="How to change user photo?" toggleAccordion={toggleAccordion} />
-        <AccordionItem index={3} openIndex={openIndex} title="WALA KOY LABOT NIMOO!!" toggleAccordion={toggleAccordion} />
+        <AccordionItem index={3} openIndex={openIndex} title="Other Needs" toggleAccordion={toggleAccordion} />
       </div>
     </div>
   );
