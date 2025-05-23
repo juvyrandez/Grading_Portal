@@ -12,6 +12,7 @@ import { FaUserFriends } from "react-icons/fa";
 import { FaBook } from "react-icons/fa";
 import { MdLibraryBooks } from "react-icons/md";
 import { FaHandsHelping } from "react-icons/fa";
+import { FaPlus, FaCheck, FaTimes, FaToggleOn, FaToggleOff,FaSpinner } from 'react-icons/fa';
 import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from "chart.js";
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
@@ -73,6 +74,7 @@ export default function AdminDashboard() {
           <SidebarItem icon={FaUserFriends } label="Students" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
           <SidebarItem icon={FaBook} label="ProgramHead" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
           <SidebarItem icon={MdLibraryBooks } label="Subjects" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
+          <SidebarItem icon={MdLibraryBooks } label="School-Year" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
           <SidebarItem icon={FaHandsHelping} label="Help" activeTab={activeTab} setActiveTab={setActiveTab} isSidebarOpen={isSidebarOpen} />
         </ul>
       </aside>
@@ -111,6 +113,7 @@ export default function AdminDashboard() {
           {activeTab === "Students" && <Students />}
           {activeTab === "ProgramHead" && <ProgramHead />}
           {activeTab === "Subjects" && <Subjects />}
+          {activeTab === "School-Year" && <School_Year />}
           {activeTab === "Help" && <Help />}
         </div>
       </main>
@@ -253,6 +256,7 @@ function Students() {
   const [selectedYear, setSelectedYear] = useState("");
   const [selectedCourse, setSelectedCourse] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [activeSchoolYear, setActiveSchoolYear] = useState(null);
   const studentsPerPage = 10;
   
   // Subjects state
@@ -278,6 +282,23 @@ function Students() {
     contact_number: "",
     address: "",
   });
+
+
+  // Fetch active school year
+  useEffect(() => {
+    const fetchActiveSchoolYear = async () => {
+      try {
+        const response = await fetch('/api/school-years/active');
+        const data = await response.json();
+        setActiveSchoolYear(data);
+      } catch (error) {
+        console.error('Error fetching active school year:', error);
+      }
+    };
+    fetchActiveSchoolYear();
+  }, []);
+
+
 
   // Enhanced handleView to fetch subjects data including dropped subjects
   const handleView = async (student) => {
@@ -1318,201 +1339,218 @@ function Students() {
       )}
 
       {/* Add Student Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl">
-            <div className="p-6">
-              <h2 className="text-2xl font-bold mb-6 text-center">Add New Student</h2>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  
-                  {/* Column 1 */}
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                        <input 
-                          type="text" 
-                          name="first_name" 
-                          placeholder="First Name" 
-                          required 
-                          className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          onChange={handleChange} 
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
-                        <input 
-                          type="text" 
-                          name="middle_name" 
-                          placeholder="Middle Name" 
-                          className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-                          onChange={handleChange} 
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                        <input 
-                          type="text" 
-                          name="last_name" 
-                          placeholder="Last Name" 
-                          required 
-                          className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-                          onChange={handleChange} 
-                        />
-                      </div>
-                    </div>
+{isModalOpen && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4">
+    <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl">
+      <div className="p-6">
+        <h2 className="text-2xl font-bold mb-6 text-center">Add New Student</h2>
+        
+        {/* Display active school year */}
+        <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+          <p className="text-blue-800 font-medium">
+            Active School Year: {activeSchoolYear ? `${activeSchoolYear.start_year}-${activeSchoolYear.end_year}` : 'None'}
+          </p>
+          {!activeSchoolYear && (
+            <p className="text-red-600 text-sm mt-1">
+              Warning: No active school year selected. Please activate a school year first.
+            </p>
+          )}
+        </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                      <input 
-                        type="email" 
-                        name="email" 
-                        placeholder="student@example.com" 
-                        required 
-                        className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-                        onChange={handleChange} 
-                      />
-                    </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Column 1 */}
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                  <input 
+                    type="text" 
+                    name="first_name" 
+                    placeholder="First Name" 
+                    required 
+                    className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    onChange={handleChange} 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
+                  <input 
+                    type="text" 
+                    name="middle_name" 
+                    placeholder="Middle Name" 
+                    className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    onChange={handleChange} 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                  <input 
+                    type="text" 
+                    name="last_name" 
+                    placeholder="Last Name" 
+                    required 
+                    className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    onChange={handleChange} 
+                  />
+                </div>
+              </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                      <input 
-                        type="text" 
-                        name="username" 
-                        placeholder="Username" 
-                        required 
-                        className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-                        onChange={handleChange} 
-                      />
-                    </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input 
+                  type="email" 
+                  name="email" 
+                  placeholder="student@example.com" 
+                  required 
+                  className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  onChange={handleChange} 
+                />
+              </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                      <input 
-                        type="password" 
-                        name="password" 
-                        placeholder="••••••••" 
-                        required 
-                        className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-                        onChange={handleChange} 
-                      />
-                    </div>
-                  </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                <input 
+                  type="text" 
+                  name="username" 
+                  placeholder="Username" 
+                  required 
+                  className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  onChange={handleChange} 
+                />
+              </div>
 
-                  {/* Column 2 */}
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Course</label>
-                        <select 
-                          name="course" 
-                          required 
-                          className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-                          onChange={handleChange}
-                        >
-                          <option value="">Select Course</option>
-                          <option value="BSIT">BSIT</option>
-                          <option value="CJEP">CJEP</option>
-                          <option value="BSBA">BSBA</option>
-                          <option value="TEP">TEP</option>
-                          <option value="HM">HM</option>
-                        </select>
-                      </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <input 
+                  type="password" 
+                  name="password" 
+                  placeholder="••••••••" 
+                  required 
+                  className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  onChange={handleChange} 
+                />
+              </div>
+            </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Year Level</label>
-                        <select 
-                          name="year_level" 
-                          required 
-                          className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-                          onChange={handleChange}
-                        >
-                          <option value="">Select Year</option>
-                          <option value="1">1st Year</option>
-                          <option value="2">2nd Year</option>
-                          <option value="3">3rd Year</option>
-                          <option value="4">4th Year</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Sex</label>
-                        <select 
-                          name="gender" 
-                          required 
-                          className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-                          onChange={handleChange}
-                        >
-                          <option value="">Select Gender</option>
-                          <option value="Male">Male</option>
-                          <option value="Female">Female</option>
-                          <option value="Other">Other</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Birthdate</label>
-                        <input 
-                          type="date" 
-                          name="birthdate" 
-                          required 
-                          className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-                          onChange={handleChange} 
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
-                      <input
-                        type="text"
-                        name="contact_number"
-                        placeholder="09XXXXXXXXX"
-                        className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-                        value={formData.contact_number || ""}
-                        onChange={handleContactNumberChange}
-                      />
-                      {formData.contact_number && formData.contact_number.length !== 11 && (
-                        <span className="text-red-500 text-xs mt-1">Contact number must be 11 digits</span>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                      <textarea 
-                        name="address" 
-                        placeholder="Full address" 
-                        rows="3"
-                        className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
-                        onChange={handleChange}
-                      ></textarea>
-                    </div>
-                  </div>
+            {/* Column 2 */}
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Course</label>
+                  <select 
+                    name="course" 
+                    required 
+                    className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    onChange={handleChange}
+                  >
+                    <option value="">Select Course</option>
+                    <option value="BSIT">BSIT</option>
+                    <option value="CJEP">CJEP</option>
+                    <option value="BSBA">BSBA</option>
+                    <option value="TEP">TEP</option>
+                    <option value="HM">HM</option>
+                  </select>
                 </div>
 
-                <div className="flex justify-end space-x-4 pt-4">
-                  <button 
-                    type="button" 
-                    className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
-                    onClick={() => setIsModalOpen(false)}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Year Level</label>
+                  <select 
+                    name="year_level" 
+                    required 
+                    className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    onChange={handleChange}
                   >
-                    Cancel
-                  </button>
-                  <button 
-                    type="submit" 
-                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Add Student
-                  </button>
+                    <option value="">Select Year</option>
+                    <option value="1">1st Year</option>
+                    <option value="2">2nd Year</option>
+                    <option value="3">3rd Year</option>
+                    <option value="4">4th Year</option>
+                  </select>
                 </div>
-              </form>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Sex</label>
+                  <select 
+                    name="gender" 
+                    required 
+                    className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    onChange={handleChange}
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Birthdate</label>
+                  <input 
+                    type="date" 
+                    name="birthdate" 
+                    required 
+                    className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    onChange={handleChange} 
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
+                <input
+                  type="text"
+                  name="contact_number"
+                  placeholder="09XXXXXXXXX"
+                  className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  value={formData.contact_number || ""}
+                  onChange={handleContactNumberChange}
+                />
+                {formData.contact_number && formData.contact_number.length !== 11 && (
+                  <span className="text-red-500 text-xs mt-1">Contact number must be 11 digits</span>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                <textarea 
+                  name="address" 
+                  placeholder="Full address" 
+                  rows="3"
+                  className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  onChange={handleChange}
+                ></textarea>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+
+          <div className="flex justify-end space-x-4 pt-4">
+            <button 
+              type="button" 
+              className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+              onClick={() => setIsModalOpen(false)}
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              className={`px-6 py-3 text-white rounded-lg transition-colors ${
+                !activeSchoolYear 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
+              disabled={!activeSchoolYear}
+            >
+              Add Student
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }
@@ -2127,6 +2165,318 @@ function Subjects() {
     </div>
   );  
 }  
+
+function School_Year() {
+  const [schoolYears, setSchoolYears] = useState([]);
+  const [newStartYear, setNewStartYear] = useState("");
+  const [newEndYear, setNewEndYear] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch school years from API
+  useEffect(() => {
+    const fetchSchoolYears = async () => {
+      try {
+        const response = await fetch('/api/school-years');
+        const data = await response.json();
+        setSchoolYears(data);
+      } catch (err) {
+        setError("Failed to load school years");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchSchoolYears();
+  }, []);
+
+  const handleAddYear = async () => {
+    if (!newStartYear || !newEndYear) {
+      setError("Both start and end years are required");
+      return;
+    }
+
+    const start = parseInt(newStartYear);
+    const end = parseInt(newEndYear);
+
+    if (isNaN(start) || isNaN(end)) {
+      setError("Years must be numbers");
+      return;
+    }
+
+    if (start >= end) {
+      setError("End year must be greater than start year");
+      return;
+    }
+
+    if (end !== start + 1) {
+      setError("School year should span exactly 1 year (e.g., 2023-2024)");
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/school-years', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'add',
+          startYear: start,
+          endYear: end
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to add school year');
+      }
+
+      // Refresh the list
+      const updatedResponse = await fetch('/api/school-years');
+      const updatedData = await updatedResponse.json();
+      setSchoolYears(updatedData);
+      
+      // Reset form
+      setNewStartYear("");
+      setNewEndYear("");
+      setIsAdding(false);
+      setError("");
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const activateYear = async (id) => {
+    try {
+      const response = await fetch('/api/school-years', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'activate',
+          id: id
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to activate school year');
+      }
+
+      // Refresh the list
+      const updatedResponse = await fetch('/api/school-years');
+      const updatedData = await updatedResponse.json();
+      setSchoolYears(updatedData);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const deleteYear = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this school year?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/school-years', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'delete',
+          id: id
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete school year');
+      }
+
+      // Refresh the list
+      const updatedResponse = await fetch('/api/school-years');
+      const updatedData = await updatedResponse.json();
+      setSchoolYears(updatedData);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <FaSpinner className="animate-spin text-4xl text-blue-500" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-10 p-8 pt-8 bg-white rounded-lg shadow-md space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-8">
+        <h2 className="text-2xl font-semibold text-gray-800">School Year Management</h2>
+        {!isAdding && (
+          <button
+            onClick={() => setIsAdding(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+          >
+            <FaPlus className="h-5 w-5" />
+            Add New School Year
+          </button>
+        )}
+      </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-100 border-l-4 border-red-500 text-red-700">
+          <p>{error}</p>
+        </div>
+      )}
+
+      {/* Add New Year Form */}
+      {isAdding && (
+        <div className="mb-8 p-6 border border-gray-200 rounded-lg bg-gray-50">
+          <h3 className="text-lg font-medium text-gray-700 mb-4">Add New School Year</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <div>
+              <label htmlFor="startYear" className="block text-sm font-medium text-gray-700 mb-1">
+                Start Year
+              </label>
+              <input
+                type="number"
+                id="startYear"
+                value={newStartYear}
+                onChange={(e) => setNewStartYear(e.target.value)}
+                placeholder="e.g., 2024"
+                min="2000"
+                max="2100"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            
+            <div className="flex items-center justify-center h-10">
+              <span className="text-gray-500">to</span>
+            </div>
+            
+            <div>
+              <label htmlFor="endYear" className="block text-sm font-medium text-gray-700 mb-1">
+                End Year
+              </label>
+              <input
+                type="number"
+                id="endYear"
+                value={newEndYear}
+                onChange={(e) => setNewEndYear(e.target.value)}
+                placeholder="e.g., 2025"
+                min="2000"
+                max="2100"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          </div>
+          
+          <div className="flex justify-end gap-2 mt-4">
+            <button
+              onClick={handleAddYear}
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+            >
+              <FaCheck className="h-4 w-4" />
+              Save
+            </button>
+            <button
+              onClick={() => {
+                setIsAdding(false);
+                setError("");
+              }}
+              className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg flex items-center gap-2"
+            >
+              <FaTimes className="h-4 w-4" />
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* School Years List */}
+      <div className="overflow-hidden border border-gray-200 rounded-lg">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                School Year
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {schoolYears.length > 0 ? (
+              schoolYears.map((year) => (
+                <tr key={year.id}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {year.start_year}-{year.end_year}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                      ${year.status === "Active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}>
+                      {year.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex justify-end gap-3">
+                      {year.status === "Inactive" ? (
+                        <button
+                          onClick={() => activateYear(year.id)}
+                          className="text-blue-600 hover:text-blue-900"
+                          title="Set as Active"
+                        >
+                          <FaToggleOff className="h-5 w-5" />
+                        </button>
+                      ) : (
+                        <button
+                          className="text-green-600 cursor-default"
+                          title="Currently Active"
+                        >
+                          <FaToggleOn className="h-5 w-5" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => deleteYear(year.id)}
+                        className="text-red-600 hover:text-red-900"
+                        title="Delete"
+                      >
+                        <FaTrash className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="3" className="px-6 py-4 text-center text-sm text-gray-500">
+                  No school years found
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Help Text */}
+      <div className="mt-4 text-sm text-gray-500">
+        <p>• Only one school year can be active at a time</p>
+        <p>• School years must span exactly one year (e.g., 2023-2024)</p>
+        <p>• The active school year will be used for all academic operations</p>
+      </div>
+    </div>
+  );
+}
 
 
 

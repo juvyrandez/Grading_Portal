@@ -6,7 +6,7 @@ export default async function handler(req, res) {
 
     try {
       const [rows] = await pool.query(
-        "SELECT course, year_level FROM users WHERE id = ?",
+        "SELECT fullname, course, year_level, address FROM users WHERE id = ?",
         [studentId]
       );
 

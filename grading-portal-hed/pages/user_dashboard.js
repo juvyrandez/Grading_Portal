@@ -319,6 +319,13 @@ function Grades({ studentId }) {
   const [course, setCourse] = useState("");
   const [yearLevel, setYearLevel] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [overallGPA, setOverallGPA] = useState(null);
+  const [showProspectus, setShowProspectus] = useState(false);
+  const [prospectusData, setProspectusData] = useState([]);
+  const [studentDetails, setStudentDetails] = useState({
+    fullname: "",
+    address: ""
+  });
 
   useEffect(() => {
     const fetchStudentInfo = async () => {
@@ -328,6 +335,10 @@ function Grades({ studentId }) {
         if (res.ok) {
           setCourse(data.course);
           setYearLevel(data.year_level);
+          setStudentDetails({
+            fullname: data.fullname,
+            address: data.address
+          });
         }
       } catch (error) {
         console.error("Failed to fetch student info:", error);
@@ -341,21 +352,22 @@ function Grades({ studentId }) {
     const fetchSubjects = async () => {
       setIsLoading(true);
       try {
-        // Fetch all subjects data in parallel
         const [regularRes, irregularRes, droppedRes] = await Promise.all([
           fetch(`/api/students_dashboard/gettingSubjects?studentId=${studentId}&semester=${semester}`),
-          fetch(`/api/students_dashboard/getIrregularSubjects?studentId=${studentId}&semester=${semester}`),
+          fetch(`/api/students_dashboard/getIrregularSubjects?studentId=${studentId}&semester=${semester}&course=${course}&yearLevel=${yearLevel}`),
           fetch(`/api/students_dashboard/getDroppedSubjects?studentId=${studentId}`)
         ]);
 
-        const regularSubjects = await regularRes.json();
-        const irregularSubjects = await irregularRes.json();
-        const droppedSubjects = await droppedRes.json();
+        const regularData = await regularRes.json();
+        const irregularData = await irregularRes.json();
+        const droppedData = await droppedRes.json();
 
-        // Get list of dropped subject IDs
+        const regularSubjects = Array.isArray(regularData) ? regularData : [];
+        const irregularSubjects = Array.isArray(irregularData) ? irregularData : [];
+        const droppedSubjects = Array.isArray(droppedData) ? droppedData : [];
+
         const droppedSubjectIds = droppedSubjects.map(sub => sub.subject_id);
 
-        // Process all subjects and mark dropped ones
         const allSubjects = [...regularSubjects, ...irregularSubjects].map((subject) => {
           const isDropped = droppedSubjectIds.includes(subject.subject_id);
           
@@ -364,17 +376,19 @@ function Grades({ studentId }) {
               ...subject,
               midterm: "Dropped",
               final: "Dropped",
+              general: "Dropped",
               remarks: "Dropped"
             };
           }
 
           const hasGrades = subject.midterm !== null && subject.final !== null;
-          const isPassed = hasGrades && subject.midterm <= 3.0 && subject.final <= 3.0;
+          const isPassed = hasGrades && subject.remarks === "Passed";
           
           return {
             ...subject,
             midterm: subject.midterm ?? "Pending",
             final: subject.final ?? "Pending",
+            general: subject.general ?? "Pending",
             remarks: hasGrades 
               ? (isPassed ? "Passed" : "Failed")
               : "Pending",
@@ -384,6 +398,7 @@ function Grades({ studentId }) {
         setSubjects(allSubjects);
       } catch (err) {
         console.error("Failed to fetch subjects:", err);
+        setSubjects([]);
       } finally {
         setIsLoading(false);
       }
@@ -394,30 +409,39 @@ function Grades({ studentId }) {
     }
   }, [studentId, semester, course, yearLevel]);
 
-  const exportToCSV = () => {
-    const csvContent = [
-      ["Subject Code", "Subject Name", "Units", "Midterm", "Final", "Remarks"],
-      ...subjects.map((subject) => [
-        subject.subject_code,
-        subject.subject_name,
-        subject.units,
-        subject.midterm,
-        subject.final,
-        subject.remarks,
-      ]),
-    ]
-      .map((row) => row.join(","))
-      .join("\n");
+  useEffect(() => {
+    if (subjects.length > 0) {
+      const { totalPoints, totalUnits } = subjects.reduce(
+        (acc, subject) => {
+          if (subject.general && typeof subject.general === 'number' && subject.units) {
+            return {
+              totalPoints: acc.totalPoints + (subject.general * subject.units),
+              totalUnits: acc.totalUnits + subject.units
+            };
+          }
+          return acc;
+        },
+        { totalPoints: 0, totalUnits: 0 }
+      );
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
+      const gpa = totalUnits > 0 ? (totalPoints / totalUnits).toFixed(2) : null;
+      setOverallGPA(gpa);
+    } else {
+      setOverallGPA(null);
+    }
+  }, [subjects]);
 
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `Grades_${semester}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const fetchProspectus = async () => {
+    try {
+      const res = await fetch(`/api/students_dashboard/getProspectus?studentId=${studentId}`);
+      const data = await res.json();
+      if (res.ok) {
+        setProspectusData(data);
+        setShowProspectus(true);
+      }
+    } catch (error) {
+      console.error("Failed to fetch prospectus:", error);
+    }
   };
 
   const getRemarksStyle = (remarks) => {
@@ -425,32 +449,132 @@ function Grades({ studentId }) {
       case "Passed": return "text-green-600 font-semibold";
       case "Failed": return "text-red-600 font-semibold";
       case "Dropped": return "text-gray-500 font-semibold italic";
-      default: return "text-yellow-600 font-semibold"; // "Pending"
+      default: return "text-yellow-600 font-semibold";
     }
+  };
+
+  const handlePrintProspectus = () => {
+    const printWindow = window.open('', '', 'width=800,height=600');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Grade Evaluation - ${studentDetails.fullname}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            h1, h2, h3 { margin: 0; }
+            table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            .header { margin-bottom: 20px; }
+            .student-info { display: flex; justify-content: space-between; margin-bottom: 10px; }
+            .semester-header { background-color: #f2f2f2; font-weight: bold; }
+            .gpa-row { background-color: #e6f2ff; }
+            @media print {
+              body { padding: 20px; }
+              button { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>ST. RITAS COLLEGE OF BALINGASAG</h1>
+            <h2>Grade Evaluation</h2>
+            <div class="student-info">
+              <div>
+                <p><strong>NAME:</strong> ${studentDetails.fullname}</p>
+              </div>
+              <div>
+                <p><strong>ADDRESS:</strong> ${studentDetails.address || 'Not specified'}</p>
+                <p><strong>COURSE:</strong> ${course}</p>
+              </div>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>COURSE NO.</th>
+                <th>COURSE DESCRIPTION</th>
+                <th>MIDTERM</th>
+                <th>FINALS</th>
+                <th>GEN. AVE</th>
+                <th>REMARKS</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${prospectusData.map(semesterData => {
+                const semesterGPA = semesterData.subjects.reduce(
+                  (acc, subject) => {
+                    if (subject.general && typeof subject.general === 'number' && subject.units) {
+                      return {
+                        totalPoints: acc.totalPoints + (subject.general * subject.units),
+                        totalUnits: acc.totalUnits + subject.units
+                      };
+                    }
+                    return acc;
+                  },
+                  { totalPoints: 0, totalUnits: 0 }
+                );
+                
+                const gpa = semesterGPA.totalUnits > 0 
+                  ? (semesterGPA.totalPoints / semesterGPA.totalUnits).toFixed(2)
+                  : null;
+
+                return `
+                  <tr class="semester-header">
+                    <td colspan="6">${semesterData.semester}</td>
+                  </tr>
+                  ${semesterData.subjects.map(subject => `
+                    <tr>
+                      <td>${subject.subject_code}</td>
+                      <td>${subject.subject_name}</td>
+                      <td>${subject.midterm || "-"}</td>
+                      <td>${subject.final || "-"}</td>
+                      <td>${subject.general || "-"}</td>
+                      <td>${subject.remarks || "-"}</td>
+                    </tr>
+                  `).join('')}
+                  <tr class="gpa-row">
+                    <td colspan="5" style="text-align: right;"><strong>Semester GPA:</strong></td>
+                    <td><strong>${gpa || "N/A"}</strong></td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+                window.close();
+              }, 200);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   return (
     <div className="p-4 sm:p-6 bg-white mt-10 rounded-lg shadow-md">
       <h2 className="text-xl sm:text-2xl font-bold mb-4 text-center sm:text-left">Your Subjects</h2>
   
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-2 sm:gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-2">
         <select
           value={semester}
           onChange={(e) => setSemester(e.target.value)}
           className="p-2 w-full sm:w-auto border rounded-lg shadow-sm text-sm"
         >
           {["1st Semester", "2nd Semester", "Summer"].map((sem) => (
-            <option key={sem} value={sem}>
-              {sem}
-            </option>
+            <option key={sem} value={sem}>{sem}</option>
           ))}
         </select>
-  
+        
         <button
-          onClick={exportToCSV}
-          className="bg-blue-500 text-white px-3 py-2 rounded-lg shadow-md hover:bg-blue-600 text-sm w-full sm:w-auto"
+          onClick={fetchProspectus}
+          className="bg-green-600 text-white px-4 py-2 rounded-lg shadow-sm hover:bg-green-700 text-sm w-full sm:w-auto"
         >
-          Export to CSV
+          View Prospectus
         </button>
       </div>
   
@@ -459,46 +583,166 @@ function Grades({ studentId }) {
           <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
         </div>
       ) : subjects.length > 0 ? (
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse border border-gray-300 shadow-md text-sm">
-            <thead>
-              <tr className="bg-gray-200 text-xs sm:text-sm">
-                <th className="border p-2 sm:p-3">Code</th>
-                <th className="border p-2 sm:p-3">Subject Name</th>
-                <th className="border p-2 sm:p-3">Units</th>
-                <th className="border p-2 sm:p-3">Midterm</th>
-                <th className="border p-2 sm:p-3">Final</th>
-                <th className="border p-2 sm:p-3">Remarks</th>
-              </tr>
-            </thead>
-            <tbody>
-              {subjects.map((subject) => (
-                <tr 
-                  key={subject.subject_id} 
-                  className={`text-center text-xs sm:text-sm ${
-                    subject.remarks === "Dropped" ? "bg-gray-50" : ""
-                  }`}
-                >
-                  <td className="border p-2 sm:p-3">{subject.subject_code}</td>
-                  <td className="border p-2 sm:p-3">{subject.subject_name}</td>
-                  <td className="border p-2 sm:p-3">{subject.units}</td>
-                  <td className="border p-2 sm:p-3">{subject.midterm}</td>
-                  <td className="border p-2 sm:p-3">{subject.final}</td>
-                  <td className={`border p-2 sm:p-3 ${getRemarksStyle(subject.remarks)}`}>
-                    {subject.remarks}
-                  </td>
+        <>
+          <div className="overflow-x-auto mb-6">
+            <table className="w-full border-collapse border border-gray-300 shadow-md text-sm">
+              <thead>
+                <tr className="bg-gray-200 text-xs sm:text-sm">
+                  <th className="border p-2 sm:p-3">Code</th>
+                  <th className="border p-2 sm:p-3">Subject Name</th>
+                  <th className="border p-2 sm:p-3">Units</th>
+                  <th className="border p-2 sm:p-3">Midterm</th>
+                  <th className="border p-2 sm:p-3">Final</th>
+                  <th className="border p-2 sm:p-3">General Average</th>
+                  <th className="border p-2 sm:p-3">Remarks</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {subjects.map((subject) => (
+                  <tr 
+                    key={subject.subject_id} 
+                    className={`text-center text-xs sm:text-sm ${
+                      subject.remarks === "Dropped" ? "bg-gray-50" : ""
+                    }`}
+                  >
+                    <td className="border p-2 sm:p-3">{subject.subject_code}</td>
+                    <td className="border p-2 sm:p-3">{subject.subject_name}</td>
+                    <td className="border p-2 sm:p-3">{subject.units}</td>
+                    <td className="border p-2 sm:p-3">{subject.midterm}</td>
+                    <td className="border p-2 sm:p-3">{subject.final}</td>
+                    <td className="border p-2 sm:p-3">{subject.general}</td>
+                    <td className={`border p-2 sm:p-3 ${getRemarksStyle(subject.remarks)}`}>
+                      {subject.remarks}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {overallGPA !== null && (
+            <div className="flex justify-end items-center gap-4 bg-blue-50 p-4 rounded-lg">
+              <span className="text-lg font-semibold text-gray-700">Overall GPA:</span>
+              <span className="text-2xl font-bold text-blue-600">{overallGPA}</span>
+            </div>
+          )}
+        </>
       ) : (
         <p className="text-gray-500 text-center mt-4">No subjects found for this semester.</p>
+      )}
+
+
+      {/* Updated Prospectus Modal */}
+      {showProspectus && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-start p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-6xl my-8">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold">Grade Evaluation</h2>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handlePrintProspectus}
+                    className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 flex items-center gap-1"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    Print
+                  </button>
+                  <button 
+                    onClick={() => setShowProspectus(false)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div className="border-b-2 border-black mb-4">
+                <h3 className="text-lg font-semibold">ST. RITAS COLLEGE OF BALINGASAG</h3>
+                <div className="flex justify-between mb-2">
+                  <div>
+                    <p><strong>NAME:</strong> {studentDetails.fullname}</p>
+                  </div>
+                  <div>
+                    <p><strong>ADDRESS:</strong> {studentDetails.address || 'Not specified'}</p>
+                    <p><strong>COURSE:</strong> {course}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gray-200">
+                      <th className="border p-2">COURSE NO.</th>
+                      <th className="border p-2">COURSE DESCRIPTION</th>
+                      <th className="border p-2">MIDTERM</th>
+                      <th className="border p-2">FINALS</th>
+                      <th className="border p-2">GEN. AVE</th>
+                      <th className="border p-2">REMARKS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {prospectusData.map((semesterData) => {
+                      // Calculate semester GPA
+                      const semesterGPA = semesterData.subjects.reduce(
+                        (acc, subject) => {
+                          if (subject.general && typeof subject.general === 'number' && subject.units) {
+                            return {
+                              totalPoints: acc.totalPoints + (subject.general * subject.units),
+                              totalUnits: acc.totalUnits + subject.units
+                            };
+                          }
+                          return acc;
+                        },
+                        { totalPoints: 0, totalUnits: 0 }
+                      );
+                      
+                      const gpa = semesterGPA.totalUnits > 0 
+                        ? (semesterGPA.totalPoints / semesterGPA.totalUnits).toFixed(2)
+                        : null;
+
+                      return (
+                        <>
+                          <tr className="bg-gray-100">
+                            <td colSpan="6" className="font-semibold p-2">
+                              {semesterData.semester}
+                            </td>
+                          </tr>
+                          {semesterData.subjects.map((subject) => (
+                            <tr key={subject.subject_id}>
+                              <td className="border p-2">{subject.subject_code}</td>
+                              <td className="border p-2">{subject.subject_name}</td>
+                              <td className="border p-2 text-center">{subject.midterm || "-"}</td>
+                              <td className="border p-2 text-center">{subject.final || "-"}</td>
+                              <td className="border p-2 text-center">{subject.general || "-"}</td>
+                              <td className="border p-2 text-center">{subject.remarks || "-"}</td>
+                            </tr>
+                          ))}
+                          <tr className="bg-blue-50">
+                            <td colSpan="5" className="border p-2 text-right font-semibold">
+                              Semester GPA:
+                            </td>
+                            <td className="border p-2 text-center font-bold">
+                              {gpa || "N/A"}
+                            </td>
+                          </tr>
+                        </>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
 }
-
 
 
 function Help() {

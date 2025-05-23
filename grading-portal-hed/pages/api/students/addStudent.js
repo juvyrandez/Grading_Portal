@@ -12,18 +12,24 @@ export default async function handler(req, res) {
 
     // Check if user already exists
     const [rows] = await pool.query("SELECT * FROM users WHERE email = ? OR username = ?", [email, username]);
-if (rows.length > 0) {
-  return res.status(400).json({ message: "Email or username is already in use" });
-}
+    if (rows.length > 0) {
+      return res.status(400).json({ message: "Email or username is already in use" });
+    }
 
+    // Get active school year
+    const [activeYear] = await pool.query("SELECT id FROM school_years WHERE status = 'Active' LIMIT 1");
+    if (!activeYear.length) {
+      return res.status(400).json({ message: "No active school year found" });
+    }
+    const schoolYearId = activeYear[0].id;
 
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Insert student into the database
     await pool.query(
-      "INSERT INTO users (fullname, email, username, password, course, year_level, gender, birthdate, contact_number, address) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-      [fullname, email, username, hashedPassword, course, year_level, gender, birthdate, contact_number, address]
+      "INSERT INTO users (school_year_id, fullname, email, username, password, course, year_level, gender, birthdate, contact_number, address) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      [schoolYearId, fullname, email, username, hashedPassword, course, year_level, gender, birthdate, contact_number, address]
     );
 
     res.status(201).json({ message: "Student added successfully" });

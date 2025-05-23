@@ -18,14 +18,14 @@ export default async function handler(req, res) {
 
       // Fetch subjects with student-specific grades
       const [subjects] = await pool.query(
-        `SELECT s.subject_id, s.subject_code, s.subject_name, s.units,
-                sg.midterm, sg.final, sg.remarks
-         FROM subjects s
-         LEFT JOIN student_grades sg 
-         ON s.subject_id = sg.subject_id AND sg.student_id = ?
-         WHERE s.department = ? AND s.year_level = ? AND s.semester = ?`,
-        [studentId, course, year_level, semester]
-      );
+  `SELECT s.subject_id, s.subject_code, s.subject_name, s.units,
+          sg.midterm, sg.final, sg.general, sg.remarks
+   FROM subjects s
+   LEFT JOIN student_grades sg 
+   ON s.subject_id = sg.subject_id AND sg.student_id = ?
+   WHERE s.department = ? AND s.year_level = ? AND s.semester = ?`,
+  [studentId, course, year_level, semester]
+);
 
       res.status(200).json(subjects);
     } catch (error) {

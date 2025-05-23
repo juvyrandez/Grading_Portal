@@ -7,7 +7,7 @@ export default async function handler(req, res) {
 
   try {
     for (const studentId in grades) {
-      const { midterm, final, is_irregular } = grades[studentId];
+      const { midterm, final, general, remarks, is_irregular } = grades[studentId];
 
       // Check if grades already exist for this student and subject
       const [existingGrades] = await pool.query(
@@ -15,20 +15,16 @@ export default async function handler(req, res) {
         [studentId, subject.subject_id]
       );
 
-      // Calculate remarks if both grades are provided
-      const remarks = midterm && final ? 
-        (midterm <= 3.0 && final <= 3.0 ? "Passed" : "Failed") : 
-        null;
-
       if (existingGrades.length > 0) {
         // Update existing grades
         await pool.query(
           `UPDATE student_grades 
-           SET midterm = ?, final = ?, remarks = ?, is_irregular = ?
+           SET midterm = ?, final = ?, general = ?, remarks = ?, is_irregular = ?
            WHERE student_id = ? AND subject_id = ?`,
           [
             midterm || existingGrades[0].midterm,
             final || existingGrades[0].final,
+            general || existingGrades[0].general,
             remarks || existingGrades[0].remarks,
             is_irregular,
             studentId,
@@ -39,13 +35,14 @@ export default async function handler(req, res) {
         // Insert new grades
         await pool.query(
           `INSERT INTO student_grades 
-           (student_id, subject_id, midterm, final, remarks, is_irregular)
-           VALUES (?, ?, ?, ?, ?, ?)`,
+           (student_id, subject_id, midterm, final, general, remarks, is_irregular)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
           [
             studentId,
             subject.subject_id,
             midterm || null,
             final || null,
+            general || null,
             remarks,
             is_irregular
           ]

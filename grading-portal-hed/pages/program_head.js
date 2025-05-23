@@ -265,8 +265,8 @@ function AddGrades() {
   const [students, setStudents] = useState([]);
   const [grades, setGrades] = useState({});
   const [loading, setLoading] = useState(false);
-  const [sortOrder, setSortOrder] = useState("asc"); // 'asc' or 'desc'
-  const [filterStatus, setFilterStatus] = useState("all"); // 'all', 'regular', 'irregular'
+  const [sortOrder, setSortOrder] = useState("asc");
+  const [filterStatus, setFilterStatus] = useState("all");
 
   // Load logged-in Program Head data
   useEffect(() => {
@@ -295,16 +295,26 @@ function AddGrades() {
       fetch(`/api/ph_addgrades/getEnrolledStudents?subjectId=${subject.subject_id}&semester=${semester}`)
         .then((res) => res.json())
         .then((data) => {
-          // Sort students alphabetically by fullname initially
           const sortedStudents = [...data].sort((a, b) => 
             a.fullname.localeCompare(b.fullname)
           );
           setStudents(sortedStudents);
 
           const initialGrades = sortedStudents.reduce((acc, student) => {
+            // Calculate general average if both grades exist
+            let general = "";
+            let remarks = "";
+            
+            if (student.midterm && student.final) {
+              general = (parseFloat(student.midterm) * 0.3 + parseFloat(student.final) * 0.7).toFixed(2);
+              remarks = parseFloat(general) <= 3.0 ? "Passed" : "Failed";
+            }
+
             acc[student.id] = { 
               midterm: student.midterm || "", 
               final: student.final || "",
+              general: general || student.general || "",
+              remarks: remarks || student.remarks || "",
               is_irregular: student.is_irregular || false
             };
             return acc;
@@ -316,12 +326,34 @@ function AddGrades() {
     }
   }, [programHead, selectedSubject, semester, subjects]);
 
-  // Handle grade input per student
+  // Handle grade input per student with 30% midterm and 70% final weighting
   const handleGradeChange = (studentId, field, value) => {
-    setGrades({
+    const updatedGrades = {
       ...grades,
-      [studentId]: { ...grades[studentId], [field]: value },
-    });
+      [studentId]: { 
+        ...grades[studentId], 
+        [field]: value,
+      }
+    };
+
+    // Calculate weighted general average (30% midterm, 70% final) and remarks when both grades are entered
+    if (field === 'midterm' || field === 'final') {
+      const midterm = field === 'midterm' ? value : updatedGrades[studentId].midterm;
+      const final = field === 'final' ? value : updatedGrades[studentId].final;
+
+      if (midterm && final) {
+        const general = (parseFloat(midterm) * 0.3 + parseFloat(final) * 0.7).toFixed(2);
+        const remarks = parseFloat(general) <= 3.0 ? "Passed" : "Failed";
+        
+        updatedGrades[studentId].general = general;
+        updatedGrades[studentId].remarks = remarks;
+      } else {
+        updatedGrades[studentId].general = "";
+        updatedGrades[studentId].remarks = "";
+      }
+    }
+
+    setGrades(updatedGrades);
   };
 
   // Sort students alphabetically
@@ -497,8 +529,10 @@ function AddGrades() {
               <tr className="bg-gray-100">
                 <th className="border p-2">Student Name</th>
                 <th className="border p-2">Status</th>
-                <th className="border p-2">Midterm</th>
-                <th className="border p-2">Final</th>
+                <th className="border p-2">Midterm (30%)</th>
+                <th className="border p-2">Final (70%)</th>
+                <th className="border p-2">General Average</th>
+                <th className="border p-2">Remarks</th>
               </tr>
             </thead>
             <tbody>
@@ -537,6 +571,20 @@ function AddGrades() {
                       onChange={(e) => handleGradeChange(student.id, "final", e.target.value)}
                       className="p-2 border rounded w-full"
                     />
+                  </td>
+                  <td className="border p-2 text-center">
+                    {grades[student.id]?.general || ""}
+                  </td>
+                  <td className="border p-2 text-center">
+                    {grades[student.id]?.remarks ? (
+                      <span className={`text-xs px-2 py-1 rounded ${
+                        grades[student.id].remarks === "Passed" 
+                          ? "bg-green-100 text-green-800" 
+                          : "bg-red-100 text-red-800"
+                      }`}>
+                        {grades[student.id].remarks}
+                      </span>
+                    ) : ""}
                   </td>
                 </tr>
               ))}
