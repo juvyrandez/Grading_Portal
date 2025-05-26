@@ -78,24 +78,6 @@ CREATE TABLE student_grades (
     subject_id INT NOT NULL,
     midterm FLOAT DEFAULT NULL,
     final FLOAT DEFAULT NULL,
-    remarks VARCHAR(100) DEFAULT NULL,
-    is_irregular BOOLEAN DEFAULT FALSE,
-    FOREIGN KEY (student_id) REFERENCES users(id),
-    FOREIGN KEY (subject_id) REFERENCES subjects(subject_id)
-);
-
-ALTER TABLE student_grades 
-ADD COLUMN general FLOAT DEFAULT NULL AFTER final;
-
-
-
-
-CREATE TABLE student_grades (
-    grade_id INT PRIMARY KEY AUTO_INCREMENT,
-    student_id INT NOT NULL,
-    subject_id INT NOT NULL,
-    midterm FLOAT DEFAULT NULL,
-    final FLOAT DEFAULT NULL,
     general FLOAT DEFAULT NULL,
     remarks VARCHAR(100) DEFAULT NULL,
     is_irregular BOOLEAN DEFAULT FALSE,
