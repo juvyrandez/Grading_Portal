@@ -3,26 +3,7 @@ CREATE DATABASE grading_portal;
 
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    fullname VARCHAR(255) NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    username VARCHAR(50) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    user_type ENUM('user', 'admin', 'programhead') NOT NULL DEFAULT 'user',
-    course VARCHAR(100) DEFAULT NULL,
-    year_level INT DEFAULT NULL,
-    gender ENUM('Male', 'Female', 'Other') DEFAULT NULL,
-    birthdate DATE DEFAULT NULL,
-    contact_number VARCHAR(15) DEFAULT NULL,
-    address TEXT DEFAULT NULL,
-    status ENUM('Active', 'Inactive') NOT NULL DEFAULT 'Active',
-    profile_img VARCHAR(255) DEFAULT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-
-CREATE TABLE users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    school_year_id INT NULL, -- added directly after id
+    school_year_id INT NULL,
     fullname VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     username VARCHAR(50) UNIQUE NOT NULL,
